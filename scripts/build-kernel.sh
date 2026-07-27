@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 #
 # build-kernel.sh - Debian kernel efficient build script
@@ -25,6 +24,13 @@ declare -A CROSS_COMPILE_MAP=(
   [arm64]="aarch64-linux-gnu-"
   [armhf]="arm-linux-gnueabihf-"
   [riscv64]="riscv64-linux-gnu-"
+)
+
+declare -A DEBIAN_BRANCH_MAP=(
+  [stable]="bookworm"
+  [testing]="trixie"
+  [unstable]="sid"
+  [experimental]="experimental"
 )
 
 RED='\033[0;31m'
@@ -61,15 +67,17 @@ setup_ccache() {
 }
 
 fetch_source() {
-  log_info "Cloning Debian kernel source (branch: ${DISTRO})..."
+  local debian_branch="${DEBIAN_BRANCH_MAP[$BRANCH]:-$BRANCH}"
+  log_info "Cloning Debian kernel source (branch: ${debian_branch})..."
   if [ -d "$SRC_DIR" ]; then
     log_warn "Source directory exists, skipping clone"
     return
   fi
-  git clone --depth 1 --branch "$DISTRO" \
+  git clone --depth 1 --branch "$debian_branch" \
     https://salsa.debian.org/kernel/linux.git "$SRC_DIR"
   cd "$SRC_DIR"
   log_info "Source HEAD: $(git log --oneline -1)"
+  log_info "Kernel version: $(make kernelversion 2>/dev/null || echo 'unknown')"
 }
 
 apply_liquorix() {

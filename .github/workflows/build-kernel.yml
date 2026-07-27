@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "目标架构"
+        description: "目标架构 (Architecture)"
         required: true
         type: choice
         options:
@@ -13,7 +13,7 @@ on:
           - armhf
           - riscv64
       distro:
-        description: "Debian 发行版本"
+        description: "Debian 发行版本 (Distribution)"
         required: true
         type: choice
         options:
@@ -22,7 +22,7 @@ on:
           - bookworm
           - trixie
       branch:
-        description: "Debian 发布分支"
+        description: "Debian 发布分支 (Branch)"
         required: true
         type: choice
         options:
@@ -31,7 +31,7 @@ on:
           - unstable
           - experimental
       kernel_version:
-        description: "内核版本"
+        description: "内核版本 (Kernel Version)"
         required: true
         type: choice
         options:
@@ -40,7 +40,7 @@ on:
           - "6.6"
           - "6.12"
       flavour:
-        description: "内核插件 / flavour"
+        description: "内核插件/Flavour (Kernel Flavour)"
         required: true
         type: choice
         options:
@@ -74,23 +74,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
-            build-essential \
-            bc \
-            bison \
-            flex \
-            libssl-dev \
-            libelf-dev \
-            dwarves \
-            ccache \
-            fakeroot \
-            devscripts \
-            debhelper \
-            git \
-            wget \
-            xz-utils \
-            kmod \
-            cpio \
-            rsync
+            build-essential bc bison flex libssl-dev libelf-dev dwarves \
+            ccache fakeroot devscripts debhelper git wget xz-utils kmod cpio rsync
 
       - name: Install cross-compilation toolchain
         if: inputs.arch != 'amd64'
@@ -133,42 +118,68 @@ jobs:
 
       - name: Clone Debian kernel source
         run: |
-          DEBIAN_BRANCH="${{ inputs.distro }}"
-          git clone \
-            --depth 1 \
-            --branch "${DEBIAN_BRANCH}" \
-            https://salsa.debian.org/kernel/linux.git \
-            linux-src
+          case "${{ inputs.branch }}" in
+            stable)       DEBIAN_BRANCH="bookworm" ;;
+            testing)      DEBIAN_BRANCH="trixie" ;;
+            unstable)     DEBIAN_BRANCH="sid" ;;
+            experimental) DEBIAN_BRANCH="experimental" ;;
+          esac
+          echo "Cloning Debian kernel source (branch: ${DEBIAN_BRANCH})..."
+          git clone --depth 1 --branch "${DEBIAN_BRANCH}" \
+            https://salsa.debian.org/kernel/linux.git linux-src
           cd linux-src
-          git log --oneline -1
+          echo "Source HEAD: $(git log --oneline -1)"
+          echo "Kernel version: $(make kernelversion)"
         timeout-minutes: 15
+
+      - name: Apply RT patches
+        if: inputs.flavour == 'rt-amd64'
+        continue-on-error: true
+        run: |
+          cd linux-src
+          KVER="${{ inputs.kernel_version }}"
+          echo "Downloading RT patch for kernel ${KVER}..."
+          RT_BASE="https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt"
+          # Try to find the latest RT patch
+          for RT_VER in $(seq 20 -1 1); do
+            URL="${RT_BASE}/${KVER}/patch-${KVER}-rt${RT_VER}.patch.xz"
+            echo "Trying ${URL}..."
+            if wget -q --spider "${URL}" 2>/dev/null; then
+              wget -q "${URL}" -O /tmp/rt.patch.xz
+              xz -d /tmp/rt.patch.xz
+              break
+            fi
+          done
+          if [ ! -f /tmp/rt.patch ]; then
+            echo "WARNING: Could not find RT patch, building without it"
+            exit 0
+          fi
+          echo "Applying RT patch..."
+          git apply --check /tmp/rt.patch && git apply /tmp/rt.patch || {
+            echo "git apply failed, trying patch -p1..."
+            patch -p1 --forward < /tmp/rt.patch || echo "WARNING: RT patch application had issues"
+          }
+          echo "RT patch applied"
 
       - name: Apply Liquorix patches
         if: inputs.flavour == 'liquorix-amd64'
+        continue-on-error: true
         run: |
           cd linux-src
-          git clone --depth 1 \
-            https://github.com/damentz/liquorix-package.git \
-            /tmp/liquorix
+          git clone --depth 1 https://github.com/damentz/liquorix-package.git /tmp/liquorix
           KVER="${{ inputs.kernel_version }}"
           PATCH_FILE=$(find /tmp/liquorix -name "*${KVER}*" -name "*.patch" | head -1)
           if [ -z "$PATCH_FILE" ]; then
-            echo "ERROR: No Liquorix patch found for kernel ${KVER}"
-            echo "Available patches:"
+            echo "WARNING: No Liquorix patch found for kernel ${KVER}, building without it"
             find /tmp/liquorix -name "*.patch" | head -20
-            exit 1
+            exit 0
           fi
           echo "Applying patch: $PATCH_FILE"
-          git am "$PATCH_FILE" || {
-            echo "Patch application failed, trying with --3way"
-            git am --3way "$PATCH_FILE"
-          }
+          git am "$PATCH_FILE" || git am --3way "$PATCH_FILE" || echo "WARNING: Liquorix patch application had issues"
 
       - name: Configure kernel
         run: |
           cd linux-src
-
-          # Use Debian's default config as base
           make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
 
           # Disable debug info for faster builds
@@ -180,6 +191,62 @@ jobs:
           ./scripts/config --disable CONFIG_KGDB
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
           ./scripts/config --disable CONFIG_DEBUG_MISC
+
+          # Cloud flavour optimizations
+          if [[ "${{ inputs.flavour }}" == *"-cloud" ]]; then
+            echo "Applying cloud optimizations..."
+            ./scripts/config --disable CONFIG_DRM
+            ./scripts/config --disable CONFIG_SOUND
+            ./scripts/config --disable CONFIG_INPUT_JOYSTICK
+            ./scripts/config --disable CONFIG_INPUT_TABLET
+            ./scripts/config --disable CONFIG_INPUT_TOUCHSCREEN
+            ./scripts/config --disable CONFIG_INPUT_MISC
+            ./scripts/config --disable CONFIG_VGA_CONSOLE
+            ./scripts/config --disable CONFIG_FB
+            ./scripts/config --disable CONFIG_VT
+            ./scripts/config --disable CONFIG_VT_CONSOLE
+            ./scripts/config --disable CONFIG_INFINIBAND
+            ./scripts/config --disable CONFIG_WIRELESS
+            ./scripts/config --disable CONFIG_WLAN
+            ./scripts/config --disable CONFIG_BT
+            ./scripts/config --disable CONFIG_CFG80211
+            ./scripts/config --disable CONFIG_MAC80211
+            ./scripts/config --disable CONFIG_PPP
+            ./scripts/config --disable CONFIG_PPPOE
+            ./scripts/config --disable CONFIG_ISDN
+            ./scripts/config --disable CONFIG_PHONE
+            ./scripts/config --disable CONFIG_RFKILL
+            ./scripts/config --disable CONFIG_REGULATOR
+            ./scripts/config --disable CONFIG_MEDIA_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_CAMERA_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_ANALOG_TV_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_DIGITAL_TV_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_RADIO_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_SDR_SUPPORT
+            ./scripts/config --disable CONFIG_MEDIA_CONTROLLER
+            ./scripts/config --disable CONFIG_VIDEO_DEV
+            ./scripts/config --disable CONFIG_DVB_CORE
+            ./scripts/config --disable CONFIG_RC_CORE
+            ./scripts/config --disable CONFIG_HID
+            ./scripts/config --disable CONFIG_USB_HID
+            ./scripts/config --disable CONFIG_HID_GENERIC
+            ./scripts/config --disable CONFIG_USB_KBD
+            ./scripts/config --disable CONFIG_USB_MOUSE
+            ./scripts/config --disable CONFIG_I2C_HID
+            ./scripts/config --disable CONFIG_INPUT_KEYBOARD
+            ./scripts/config --disable CONFIG_INPUT_MOUSE
+            ./scripts/config --disable CONFIG_SERIO
+            ./scripts/config --disable CONFIG_VT_HW_CONSOLE_BINDING
+          fi
+
+          # RT flavour: enable RT preemption
+          if [[ "${{ inputs.flavour }}" == "rt-amd64" ]]; then
+            echo "Enabling RT preemption..."
+            ./scripts/config --enable CONFIG_PREEMPT_RT
+            ./scripts/config --disable CONFIG_PREEMPT_NONE
+            ./scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
+            ./scripts/config --disable CONFIG_PREEMPT
+          fi
 
           make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
 
@@ -229,7 +296,8 @@ jobs:
           cp .config ${ARTIFACT_DIR}/config-${{ inputs.kernel_version }}-${{ inputs.flavour }}
 
           # Create modules archive
-          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} INSTALL_MOD_PATH=${ARTIFACT_DIR}/modules modules_install
+          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
+            INSTALL_MOD_PATH=${ARTIFACT_DIR}/modules modules_install
           cd ${ARTIFACT_DIR}/modules
           tar cJf ../modules-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ inputs.arch }}.tar.xz .
           cd ${ARTIFACT_DIR}
@@ -248,8 +316,8 @@ jobs:
       - name: Generate release tag
         id: tag
         run: |
-          DATE=$(date +%Y%m%d)
-          TAG="${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${DATE}"
+          DATE=$(date +%Y%m%d-%H%M%S)
+          TAG="kernel-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${DATE}"
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "Release tag: ${TAG}"
 

@@ -1,153 +1,72 @@
-# Debian Linux Kernel - GitHub Action Auto Build
+# Debian Linux Kernel GitHub Action
 
-[![Build Debian Linux Kernel](https://github.com/poying2018/debian-linux-github-action/actions/workflows/build-kernel.yml/badge.svg)](https://github.com/poying2018/debian-linux-github-action/actions/workflows/build-kernel.yml)
+自动编译 Debian Linux 内核的 GitHub Actions 工作流。
 
-Automated Debian Linux kernel compilation via GitHub Actions with dropdown parameter selection.
+## 功能特性
 
-## Features
+- 支持多种架构：amd64、arm64、armhf、riscv64
+- 支持多个 Debian 发行版：buster、bullseye、bookworm、trixie
+- 支持多个 Debian 分支：stable、testing、unstable、experimental
+- 支持多种内核版本：5.10、6.1、6.6、6.12
+- 支持多种内核 flavour：amd64、amd64-cloud、arm64、arm64-cloud、rt-amd64、liquorix-amd64
+- 高效编译：ccache + 并行编译 + 禁用调试信息
+- 自动发布到 GitHub Release
 
-- **One-click build** via GitHub Actions `workflow_dispatch`
-- **5 dropdown parameters**: Architecture, Distribution, Branch, Kernel Version, Flavour
-- **High-efficiency compilation** with ccache, parallel jobs, and debug info disabled
-- **Auto-release** to GitHub Release with all build artifacts
-- **All sources from official/open-source repos** (salsa.debian.org, github.com, git.kernel.org)
+## 使用方法
 
-## Parameters
+1. 进入 GitHub 仓库的 **Actions** 标签页
+2. 选择 **Build Debian Linux Kernel** 工作流
+3. 点击 **Run workflow**
+4. 填写以下参数：
 
-| # | Parameter | Options |
-|---|-----------|---------|
-| 1 | **Architecture** | `amd64`, `arm64`, `armhf`, `riscv64` |
-| 2 | **Distribution** | `buster` (10), `bullseye` (11), `bookworm` (12), `trixie` (13) |
-| 3 | **Branch** | `stable`, `testing`, `unstable` (sid), `experimental` |
-| 4 | **Kernel Version** | `5.10`, `6.1`, `6.6`, `6.12` |
-| 5 | **Flavour** | `amd64`, `amd64-cloud`, `arm64`, `arm64-cloud`, `rt-amd64`, `liquorix-amd64` |
+| 参数 | 说明 | 可选值 |
+|------|------|--------|
+| **Architecture** | 目标架构 | amd64, arm64, armhf, riscv64 |
+| **Distribution** | Debian 发行版本 | buster, bullseye, bookworm, trixie |
+| **Branch** | Debian 发布分支 | stable, testing, unstable, experimental |
+| **Kernel Version** | 内核版本 | 5.10, 6.1, 6.6, 6.12 |
+| **Flavour** | 内核插件/Flavour | amd64, amd64-cloud, arm64, arm64-cloud, rt-amd64, liquorix-amd64 |
 
-## How to Use
+5. 点击 **Run workflow** 开始编译
 
-### GitHub Actions (Cloud)
+## 编译优化
 
-1. Go to **Actions** tab in your repository
-2. Select **"Build Debian Linux Kernel"** workflow
-3. Click **"Run workflow"**
-4. Fill in the 5 dropdown parameters
-5. Click **"Run workflow"** to start
+- **ccache**：缓存编译结果，加速重复编译
+- **并行编译**：使用 `make -j$(nproc)` 充分利用 CPU 核心
+- **禁用调试信息**：`CONFIG_DEBUG_INFO_NONE=y` 大幅减少编译时间
+- **浅克隆**：`git clone --depth 1` 减少源码下载时间
+- **缓存持久化**：通过 `actions/cache` 在多次运行间保持 ccache
 
-Build time: ~30-60 minutes (first run), ~5-10 minutes (with ccache)
+## 输出产物
 
-### Self-Hosted Runner
+编译完成后，会自动创建 GitHub Release，包含：
 
-For faster builds or cross-compilation, use your own Linux machine:
+- `*.deb` — Debian 内核安装包
+- `bzImage` / `Image` — 内核启动镜像
+- `vmlinux.xz` — 压缩的内核 ELF 文件（用于调试）
+- `modules-*.tar.xz` — 内核模块压缩包
+- `config-*` — 内核配置文件
 
-#### 1. Register a Self-Hosted Runner
+## 源码来源
 
-```bash
-# On your Linux machine
-mkdir actions-runner && cd actions-runner
-curl -o actions-runner-linux-x64-2.319.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.319.0/actions-runner-linux-x64-2.319.0.tar.gz
-tar xzf actions-runner-linux-x64-2.319.0.tar.gz
-./config.sh --url https://github.com/poying2018/debian-linux-github-action --token <YOUR_TOKEN>
-./run.sh
-```
+所有源码均来自官方开源项目：
 
-Get your registration token from: **Settings > Actions > Runners > New self-hosted runner**
+- **Debian 内核源码**：https://salsa.debian.org/kernel/linux
+- **Liquorix 内核补丁**：https://github.com/damentz/liquorix-package
+- **RT 内核补丁**：https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/
 
-#### 2. Run Workflow on Self-Hosted Runner
-
-Update the workflow `runs-on` field:
-
-```yaml
-runs-on: self-hosted
-```
-
-Or use labels for specific machines:
-
-```yaml
-runs-on: [self-hosted, linux, x64, high-mem]
-```
-
-#### 3. Local Build (Without GitHub Actions)
+## 本地构建
 
 ```bash
-git clone https://github.com/poying2018/debian-linux-github-action.git
-cd debian-linux-github-action/scripts
-chmod +x build-kernel.sh
-./build-kernel.sh amd64 bookworm stable 6.1 amd64
+chmod +x scripts/build-kernel.sh
+./scripts/build-kernel.sh amd64 bookworm stable 6.1 amd64
 ```
 
-## Build Optimization
+## 分支映射
 
-This project uses the most efficient kernel compilation methods:
-
-| Optimization | Description | Impact |
-|-------------|-------------|--------|
-| **ccache** | Compiler cache persisted via `actions/cache` | **5-10x faster** on rebuilds |
-| **Parallel compilation** | `make -j$(nproc)` uses all CPU cores | Linear speedup |
-| **Debug info disabled** | `CONFIG_DEBUG_INFO_NONE=y` | **30-50% less** compile time |
-| **Shallow clone** | `git clone --depth 1` | Faster source download |
-| **ccache compression** | `CCACHE_COMPRESS=1` | More cache hits |
-
-### Recommended: Self-Hosted Runner with tmpfs
-
-For maximum speed on a self-hosted runner with 16GB+ RAM:
-
-```bash
-# Mount build directory in RAM
-sudo mount -t tmpfs -o size=8G tmpfs /build
-cd /build
-./build-kernel.sh amd64 bookworm stable 6.1 amd64
-```
-
-## Source Repositories
-
-| Source | URL | Description |
-|--------|-----|-------------|
-| Debian Kernel | https://salsa.debian.org/kernel/linux | Official Debian kernel packaging |
-| Liquorix | https://github.com/damentz/liquorix-package | Low-latency kernel patches |
-| Linux Stable | https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git | Official Linux kernel |
-| Bootlin Toolchains | https://toolchains.bootlin.com/ | Pre-built cross-compilation toolchains |
-
-## Build Artifacts
-
-Each successful build produces:
-
-- `*.deb` — Debian kernel packages (headers, image, modules)
-- `bzImage` / `Image` — Bootable kernel image
-- `vmlinux.xz` — Compressed kernel ELF (for debugging)
-- `modules-*.tar.xz` — Kernel modules archive
-- `config-*` — Kernel configuration file
-
-## Architecture Mapping
-
-| Architecture | Debian Name | Cross-Compiler |
-|-------------|------------|----------------|
-| `amd64` | x86_64 | Native (no cross-compile) |
-| `arm64` | aarch64 | `aarch64-linux-gnu-` |
-| `armhf` | armv7l | `arm-linux-gnueabihf-` |
-| `riscv64` | riscv64 | `riscv64-linux-gnu-` |
-
-## Distribution to Kernel Mapping
-
-| Distribution | Debian Branch | Default Kernel |
-|-------------|---------------|----------------|
-| Buster (10) | `debian/5.10` | 5.10 |
-| Bullseye (11) | `debian/6.1` | 6.1 |
-| Bookworm (12) | `debian/6.6` | 6.6 |
-| Trixie (13) | `debian/6.12` | 6.12 |
-
-## FAQ
-
-**Q: Build fails with "out of memory"?**
-A: GitHub hosted runners have 7GB RAM. Reduce parallel jobs: `NPROC=2 ./build-kernel.sh ...`
-
-**Q: How to check ccache effectiveness?**
-A: Check the build logs for "ccache stats" — hit rate should be >80% on rebuilds.
-
-**Q: Liquorix patch fails to apply?**
-A: Liquorix only supports specific kernel versions. Check available patches in the Liquorix repo.
-
-**Q: Cross-compilation is very slow?**
-A: Use a self-hosted runner with more cores, or use Bootlin pre-built toolchains.
-
-## License
-
-This project is for building the Linux kernel. The Linux kernel is licensed under GPLv2.
+| 输入分支 | Debian 内核源码分支 |
+|----------|---------------------|
+| stable | bookworm |
+| testing | trixie |
+| unstable | sid |
+| experimental | experimental |
