@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "目标架构 (Architecture)"
+        description: "Target Architecture"
         required: true
         type: choice
         options:
@@ -13,7 +13,7 @@ on:
           - armhf
           - riscv64
       distro:
-        description: "Debian 发行版本 (Distribution)"
+        description: "Debian Distribution"
         required: true
         type: choice
         options:
@@ -22,7 +22,7 @@ on:
           - bookworm
           - trixie
       branch:
-        description: "Debian 发布分支 (Branch)"
+        description: "Debian Branch"
         required: true
         type: choice
         options:
@@ -31,7 +31,7 @@ on:
           - unstable
           - experimental
       kernel_version:
-        description: "内核版本 (Kernel Version)"
+        description: "Kernel Version"
         required: true
         type: choice
         options:
@@ -40,7 +40,7 @@ on:
           - "6.6"
           - "6.12"
       flavour:
-        description: "内核插件/Flavour (Kernel Flavour)"
+        description: "Kernel Flavour"
         required: true
         type: choice
         options:
@@ -52,11 +52,6 @@ on:
           - liquorix-amd64
 
 env:
-  ARCH: ${{ inputs.arch }}
-  DISTRO: ${{ inputs.distro }}
-  BRANCH: ${{ inputs.branch }}
-  KERNEL_VERSION: ${{ inputs.kernel_version }}
-  FLAVOUR: ${{ inputs.flavour }}
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 4G
   CCACHE_COMPRESS: true
@@ -70,12 +65,23 @@ jobs:
       - name: Checkout workflow repo
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Set up build environment
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
             build-essential bc bison flex libssl-dev libelf-dev dwarves \
             ccache fakeroot devscripts debhelper git wget xz-utils kmod cpio rsync
+
+      - name: Set architecture mapping
+        run: |
+          case "${{ inputs.arch }}" in
+            amd64)   echo "KERNEL_ARCH=x86_64" >> $GITHUB_ENV ;;
+            arm64)   echo "KERNEL_ARCH=arm64" >> $GITHUB_ENV ;;
+            armhf)   echo "KERNEL_ARCH=arm" >> $GITHUB_ENV ;;
+            riscv64) echo "KERNEL_ARCH=riscv" >> $GITHUB_ENV ;;
+            *)       echo "KERNEL_ARCH=${{ inputs.arch }}" >> $GITHUB_ENV ;;
+          esac
+          echo "KERNEL_ARCH=$KERNEL_ARCH"
 
       - name: Install cross-compilation toolchain
         if: inputs.arch != 'amd64'
@@ -134,7 +140,6 @@ jobs:
           KVER="${{ inputs.kernel_version }}"
           echo "Downloading RT patch for kernel ${KVER}..."
           RT_BASE="https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt"
-          # Try to find the latest RT patch (updated)
           for RT_VER in $(seq 20 -1 1); do
             URL="${RT_BASE}/${KVER}/patch-${KVER}-rt${RT_VER}.patch.xz"
             echo "Trying ${URL}..."
@@ -174,19 +179,8 @@ jobs:
       - name: Configure kernel
         run: |
           cd linux-src
-          # Map architecture names to Linux kernel names
-          case "${{ inputs.arch }}" in
-            amd64)   KERNEL_ARCH="x86_64" ;;
-            arm64)   KERNEL_ARCH="arm64" ;;
-            armhf)   KERNEL_ARCH="arm" ;;
-            riscv64) KERNEL_ARCH="riscv" ;;
-            *)       KERNEL_ARCH="${{ inputs.arch }}" ;;
-          esac
-          echo "Configuring kernel (arch=\)..."
-echo "KERNEL_ARCH=\" >> \
-          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
 
-          # Disable debug info for faster builds
           ./scripts/config --disable CONFIG_DEBUG_INFO
           ./scripts/config --enable CONFIG_DEBUG_INFO_NONE
           ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
@@ -196,7 +190,6 @@ echo "KERNEL_ARCH=\" >> \
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
           ./scripts/config --disable CONFIG_DEBUG_MISC
 
-          # Cloud flavour optimizations
           if [[ "${{ inputs.flavour }}" == *"-cloud" ]]; then
             echo "Applying cloud optimizations..."
             ./scripts/config --disable CONFIG_DRM
@@ -243,7 +236,6 @@ echo "KERNEL_ARCH=\" >> \
             ./scripts/config --disable CONFIG_VT_HW_CONSOLE_BINDING
           fi
 
-          # RT flavour: enable RT preemption
           if [[ "${{ inputs.flavour }}" == "rt-amd64" ]]; then
             echo "Enabling RT preemption..."
             ./scripts/config --enable CONFIG_PREEMPT_RT
@@ -252,7 +244,7 @@ echo "KERNEL_ARCH=\" >> \
             ./scripts/config --disable CONFIG_PREEMPT
           fi
 
-          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
 
       - name: Build kernel (make deb-pkg)
         run: |
@@ -262,7 +254,13 @@ echo "KERNEL_ARCH=\" >> \
           echo "ccache stats before build:"
           ccache -s
 
-          make -j${NPROC} \\\n            ARCH=${KERNEL_ARCH} \\\n            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \\\n            CC="ccache gcc" \\\n            LOCALVERSION=-${{ inputs.flavour }} \\\n            KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \\\n            deb-pkg
+          make -j${NPROC} \
+            ARCH=$KERNEL_ARCH \
+            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
+            CC="ccache gcc" \
+            LOCALVERSION=-${{ inputs.flavour }} \
+            KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \
+            deb-pkg
 
           echo ""
           echo "ccache stats after build:"
@@ -275,26 +273,22 @@ echo "KERNEL_ARCH=\" >> \
           ARTIFACT_DIR="${{ github.workspace }}/artifacts"
           mkdir -p ${ARTIFACT_DIR}
 
-          # Copy .deb packages
           find .. -maxdepth 1 -name "*.deb" -exec cp {} ${ARTIFACT_DIR}/ \;
 
-          # Copy kernel images
-          if [ -f arch/${KERNEL_ARCH}/boot/bzImage ]; then
-            cp arch/${KERNEL_ARCH}/boot/bzImage ${ARTIFACT_DIR}/
+          if [ -f arch/$KERNEL_ARCH/boot/bzImage ]; then
+            cp arch/$KERNEL_ARCH/boot/bzImage ${ARTIFACT_DIR}/
           fi
-          if [ -f arch/${KERNEL_ARCH}/boot/Image ]; then
-            cp arch/${KERNEL_ARCH}/boot/Image ${ARTIFACT_DIR}/
+          if [ -f arch/$KERNEL_ARCH/boot/Image ]; then
+            cp arch/$KERNEL_ARCH/boot/Image ${ARTIFACT_DIR}/
           fi
           if [ -f vmlinux ]; then
             xz -z -k -T0 vmlinux
             cp vmlinux.xz ${ARTIFACT_DIR}/
           fi
 
-          # Copy kernel config
           cp .config ${ARTIFACT_DIR}/config-${{ inputs.kernel_version }}-${{ inputs.flavour }}
 
-          # Create modules archive
-          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \\
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
             INSTALL_MOD_PATH=${ARTIFACT_DIR}/modules modules_install
           cd ${ARTIFACT_DIR}/modules
           tar cJf ../modules-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ inputs.arch }}.tar.xz .
@@ -323,9 +317,9 @@ echo "KERNEL_ARCH=\" >> \
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: "Debian Kernel ${{ inputs.kernel_version }} (${{ inputs.flavour }}) for ${{ inputs.arch }} - ${{ inputs.distro }}"
+          name: "Linux Kernel ${{ inputs.kernel_version }} (${{ inputs.flavour }}) for ${{ inputs.arch }}"
           body: |
-            ## Debian Linux Kernel Build
+            ## Linux Kernel Build
 
             | Parameter | Value |
             |-----------|-------|
@@ -336,17 +330,17 @@ echo "KERNEL_ARCH=\" >> \
             | Flavour | ${{ inputs.flavour }} |
 
             ### Build Info
-            - Built with ccache (cache key: `ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-*`)
-            - Debug info disabled (`CONFIG_DEBUG_INFO_NONE=y`)
-            - Parallel compilation with `-j$(nproc)`
+            - Built with ccache
+            - Debug info disabled
+            - Parallel compilation with -j$(nproc)
             - Source: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux
 
             ### Artifacts
-            - `*.deb` — Debian kernel packages
-            - `bzImage` / `Image` — Kernel boot image
-            - `vmlinux.xz` — Compressed kernel ELF (for debugging)
-            - `modules-*.tar.xz` — Kernel modules
-            - `config-*` — Kernel configuration file
+            - *.deb - Kernel packages
+            - bzImage / Image - Kernel boot image
+            - vmlinux.xz - Compressed kernel ELF
+            - modules-*.tar.xz - Kernel modules
+            - config-* - Kernel configuration
           files: artifacts/*
           draft: false
           prerelease: ${{ inputs.branch != 'stable' }}
