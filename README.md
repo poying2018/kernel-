@@ -10,7 +10,7 @@
 - 支持多种内核版本：5.10、6.1、6.6、6.12
 - 支持多种内核 flavour：amd64、amd64-cloud、arm64、arm64-cloud、rt-amd64、liquorix-amd64
 - 高效编译：ccache + 并行编译 + 禁用调试信息
-- 自动发布到 GitHub Release
+- 自动上传到 GitHub Actions Artifact
 
 ## 使用方法
 
@@ -39,7 +39,7 @@
 
 ## 输出产物
 
-编译完成后，会自动创建 GitHub Release，包含：
+编译完成后，在该次 GitHub Actions 运行页面的 Artifacts 区域下载，包含：
 
 - `*.deb` — Debian 内核安装包
 - `bzImage` / `Image` — 内核启动镜像
@@ -62,11 +62,6 @@ chmod +x scripts/build-kernel.sh
 ./scripts/build-kernel.sh amd64 bookworm stable 6.1 amd64
 ```
 
-## 分支映射
+## 构建说明
 
-| 输入分支 | Linux 内核源码分支 |
-|----------|---------------------|
-| stable | bookworm |
-| testing | trixie |
-| unstable | sid |
-| experimental | experimental |
+`kernel_version` 用于选择 Linux 官方稳定源码标签；`distro` 和 `branch` 会写入构建参数与 Artifact 名称，便于区分目标 Debian 发布版本和分支。所有源码均从 Linux 官方源码库、kernel.org RT 镜像或公开的 Liquorix 项目获取。
