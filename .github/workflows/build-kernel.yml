@@ -307,44 +307,10 @@ jobs:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
 
-      - name: Generate release tag
-        id: tag
-        run: |
-          DATE=$(date +%Y%m%d-%H%M%S)
-          TAG="kernel-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${DATE}"
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Release tag: ${TAG}"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: "Linux Kernel ${{ inputs.kernel_version }} (${{ inputs.flavour }}) for ${{ inputs.arch }}"
-          body: |
-            ## Linux Kernel Build
-
-            | Parameter | Value |
-            |-----------|-------|
-            | Architecture | ${{ inputs.arch }} |
-            | Distribution | ${{ inputs.distro }} |
-            | Branch | ${{ inputs.branch }} |
-            | Kernel Version | ${{ inputs.kernel_version }} |
-            | Flavour | ${{ inputs.flavour }} |
-
-            ### Build Info
-            - Built with ccache
-            - Debug info disabled
-            - Parallel compilation with -j$(nproc)
-            - Source: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux
-
-            ### Artifacts
-            - *.deb - Kernel packages
-            - bzImage / Image - Kernel boot image
-            - vmlinux.xz - Compressed kernel ELF
-            - modules-*.tar.xz - Kernel modules
-            - config-* - Kernel configuration
-          files: artifacts/*
-          draft: false
-          prerelease: ${{ inputs.branch != 'stable' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: kernel-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}
+          path: artifacts/*
+          if-no-files-found: error
+          compression-level: 0
