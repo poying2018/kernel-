@@ -174,7 +174,16 @@ jobs:
       - name: Configure kernel
         run: |
           cd linux-src
-          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
+          # Map architecture names to Linux kernel names
+          case "${{ inputs.arch }}" in
+            amd64)   KERNEL_ARCH="x86_64" ;;
+            arm64)   KERNEL_ARCH="arm64" ;;
+            armhf)   KERNEL_ARCH="arm" ;;
+            riscv64) KERNEL_ARCH="riscv" ;;
+            *)       KERNEL_ARCH="${{ inputs.arch }}" ;;
+          esac
+          echo "Configuring kernel (arch=${KERNEL_ARCH})..."
+          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
 
           # Disable debug info for faster builds
           ./scripts/config --disable CONFIG_DEBUG_INFO
@@ -242,7 +251,7 @@ jobs:
             ./scripts/config --disable CONFIG_PREEMPT
           fi
 
-          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
+          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
 
       - name: Build kernel (make deb-pkg)
         run: |
@@ -252,13 +261,7 @@ jobs:
           echo "ccache stats before build:"
           ccache -s
 
-          make -j${NPROC} \
-            ARCH=${{ inputs.arch }} \
-            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
-            CC="ccache gcc" \
-            LOCALVERSION=-${{ inputs.flavour }} \
-            KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \
-            deb-pkg
+          make -j${NPROC} \\\n            ARCH=${KERNEL_ARCH} \\\n            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \\\n            CC="ccache gcc" \\\n            LOCALVERSION=-${{ inputs.flavour }} \\\n            KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \\\n            deb-pkg
 
           echo ""
           echo "ccache stats after build:"
@@ -275,11 +278,11 @@ jobs:
           find .. -maxdepth 1 -name "*.deb" -exec cp {} ${ARTIFACT_DIR}/ \;
 
           # Copy kernel images
-          if [ -f arch/${{ inputs.arch }}/boot/bzImage ]; then
-            cp arch/${{ inputs.arch }}/boot/bzImage ${ARTIFACT_DIR}/
+          if [ -f arch/${KERNEL_ARCH}/boot/bzImage ]; then
+            cp arch/${KERNEL_ARCH}/boot/bzImage ${ARTIFACT_DIR}/
           fi
-          if [ -f arch/${{ inputs.arch }}/boot/Image ]; then
-            cp arch/${{ inputs.arch }}/boot/Image ${ARTIFACT_DIR}/
+          if [ -f arch/${KERNEL_ARCH}/boot/Image ]; then
+            cp arch/${KERNEL_ARCH}/boot/Image ${ARTIFACT_DIR}/
           fi
           if [ -f vmlinux ]; then
             xz -z -k -T0 vmlinux
@@ -290,7 +293,7 @@ jobs:
           cp .config ${ARTIFACT_DIR}/config-${{ inputs.kernel_version }}-${{ inputs.flavour }}
 
           # Create modules archive
-          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
+          make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \\
             INSTALL_MOD_PATH=${ARTIFACT_DIR}/modules modules_install
           cd ${ARTIFACT_DIR}/modules
           tar cJf ../modules-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ inputs.arch }}.tar.xz .
