@@ -1,0 +1,288 @@
+name: Build Debian Linux Kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "目标架构"
+        required: true
+        type: choice
+        options:
+          - amd64
+          - arm64
+          - armhf
+          - riscv64
+      distro:
+        description: "Debian 发行版本"
+        required: true
+        type: choice
+        options:
+          - buster
+          - bullseye
+          - bookworm
+          - trixie
+      branch:
+        description: "Debian 发布分支"
+        required: true
+        type: choice
+        options:
+          - stable
+          - testing
+          - unstable
+          - experimental
+      kernel_version:
+        description: "内核版本"
+        required: true
+        type: choice
+        options:
+          - "5.10"
+          - "6.1"
+          - "6.6"
+          - "6.12"
+      flavour:
+        description: "内核插件 / flavour"
+        required: true
+        type: choice
+        options:
+          - amd64
+          - amd64-cloud
+          - arm64
+          - arm64-cloud
+          - rt-amd64
+          - liquorix-amd64
+
+env:
+  ARCH: ${{ inputs.arch }}
+  DISTRO: ${{ inputs.distro }}
+  BRANCH: ${{ inputs.branch }}
+  KERNEL_VERSION: ${{ inputs.kernel_version }}
+  FLAVOUR: ${{ inputs.flavour }}
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 4G
+  CCACHE_COMPRESS: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout workflow repo
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential \
+            bc \
+            bison \
+            flex \
+            libssl-dev \
+            libelf-dev \
+            dwarves \
+            ccache \
+            fakeroot \
+            devscripts \
+            debhelper \
+            git \
+            wget \
+            xz-utils \
+            kmod \
+            cpio \
+            rsync
+
+      - name: Install cross-compilation toolchain
+        if: inputs.arch != 'amd64'
+        run: |
+          case "${{ inputs.arch }}" in
+            arm64)
+              sudo apt-get install -y -qq gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+              echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+              ;;
+            armhf)
+              sudo apt-get install -y -qq gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
+              echo "CROSS_COMPILE=arm-linux-gnueabihf-" >> $GITHUB_ENV
+              ;;
+            riscv64)
+              sudo apt-get install -y -qq gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu
+              echo "CROSS_COMPILE=riscv64-linux-gnu-" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-
+            ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-
+            ccache-${{ inputs.arch }}-${{ inputs.distro }}-
+            ccache-${{ inputs.arch }}-
+
+      - name: Initialize ccache
+        run: |
+          mkdir -p ${{ env.CCACHE_DIR }}
+          ccache --set-config=cache_dir=${{ env.CCACHE_DIR }}
+          ccache --set-config=max_size=${{ env.CCACHE_MAXSIZE }}
+          ccache --set-config=compression=${{ env.CCACHE_COMPRESS }}
+          ccache --set-config=base_dir=${{ github.workspace }}
+          ccache -z
+          ccache -s
+
+      - name: Clone Debian kernel source
+        run: |
+          DEBIAN_BRANCH="${{ inputs.distro }}"
+          git clone \
+            --depth 1 \
+            --branch "${DEBIAN_BRANCH}" \
+            https://salsa.debian.org/kernel/linux.git \
+            linux-src
+          cd linux-src
+          git log --oneline -1
+        timeout-minutes: 15
+
+      - name: Apply Liquorix patches
+        if: inputs.flavour == 'liquorix-amd64'
+        run: |
+          cd linux-src
+          git clone --depth 1 \
+            https://github.com/damentz/liquorix-package.git \
+            /tmp/liquorix
+          KVER="${{ inputs.kernel_version }}"
+          PATCH_FILE=$(find /tmp/liquorix -name "*${KVER}*" -name "*.patch" | head -1)
+          if [ -z "$PATCH_FILE" ]; then
+            echo "ERROR: No Liquorix patch found for kernel ${KVER}"
+            echo "Available patches:"
+            find /tmp/liquorix -name "*.patch" | head -20
+            exit 1
+          fi
+          echo "Applying patch: $PATCH_FILE"
+          git am "$PATCH_FILE" || {
+            echo "Patch application failed, trying with --3way"
+            git am --3way "$PATCH_FILE"
+          }
+
+      - name: Configure kernel
+        run: |
+          cd linux-src
+
+          # Use Debian's default config as base
+          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
+
+          # Disable debug info for faster builds
+          ./scripts/config --disable CONFIG_DEBUG_INFO
+          ./scripts/config --enable CONFIG_DEBUG_INFO_NONE
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF4
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
+          ./scripts/config --disable CONFIG_KGDB
+          ./scripts/config --disable CONFIG_DEBUG_KERNEL
+          ./scripts/config --disable CONFIG_DEBUG_MISC
+
+          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
+
+      - name: Build kernel (make deb-pkg)
+        run: |
+          cd linux-src
+          NPROC=$(nproc)
+          echo "Building with ${NPROC} parallel jobs..."
+          echo "ccache stats before build:"
+          ccache -s
+
+          make -j${NPROC} \
+            ARCH=${{ inputs.arch }} \
+            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
+            CC="ccache gcc" \
+            LOCALVERSION=-${{ inputs.flavour }} \
+            KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \
+            deb-pkg
+
+          echo ""
+          echo "ccache stats after build:"
+          ccache -s
+        timeout-minutes: 300
+
+      - name: Collect build artifacts
+        run: |
+          cd linux-src
+          ARTIFACT_DIR="${{ github.workspace }}/artifacts"
+          mkdir -p ${ARTIFACT_DIR}
+
+          # Copy .deb packages
+          find .. -maxdepth 1 -name "*.deb" -exec cp {} ${ARTIFACT_DIR}/ \;
+
+          # Copy kernel images
+          if [ -f arch/${{ inputs.arch }}/boot/bzImage ]; then
+            cp arch/${{ inputs.arch }}/boot/bzImage ${ARTIFACT_DIR}/
+          fi
+          if [ -f arch/${{ inputs.arch }}/boot/Image ]; then
+            cp arch/${{ inputs.arch }}/boot/Image ${ARTIFACT_DIR}/
+          fi
+          if [ -f vmlinux ]; then
+            xz -z -k -T0 vmlinux
+            cp vmlinux.xz ${ARTIFACT_DIR}/
+          fi
+
+          # Copy kernel config
+          cp .config ${ARTIFACT_DIR}/config-${{ inputs.kernel_version }}-${{ inputs.flavour }}
+
+          # Create modules archive
+          make ARCH=${{ inputs.arch }} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} INSTALL_MOD_PATH=${ARTIFACT_DIR}/modules modules_install
+          cd ${ARTIFACT_DIR}/modules
+          tar cJf ../modules-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ inputs.arch }}.tar.xz .
+          cd ${ARTIFACT_DIR}
+          rm -rf modules
+
+          echo "=== Build Artifacts ==="
+          ls -lh ${ARTIFACT_DIR}/
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
+
+      - name: Generate release tag
+        id: tag
+        run: |
+          DATE=$(date +%Y%m%d)
+          TAG="${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${DATE}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Release tag: ${TAG}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Debian Kernel ${{ inputs.kernel_version }} (${{ inputs.flavour }}) for ${{ inputs.arch }} - ${{ inputs.distro }}"
+          body: |
+            ## Debian Linux Kernel Build
+
+            | Parameter | Value |
+            |-----------|-------|
+            | Architecture | ${{ inputs.arch }} |
+            | Distribution | ${{ inputs.distro }} |
+            | Branch | ${{ inputs.branch }} |
+            | Kernel Version | ${{ inputs.kernel_version }} |
+            | Flavour | ${{ inputs.flavour }} |
+
+            ### Build Info
+            - Built with ccache (cache key: `ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-*`)
+            - Debug info disabled (`CONFIG_DEBUG_INFO_NONE=y`)
+            - Parallel compilation with `-j$(nproc)`
+            - Source: https://salsa.debian.org/kernel/linux
+
+            ### Artifacts
+            - `*.deb` — Debian kernel packages
+            - `bzImage` / `Image` — Kernel boot image
+            - `vmlinux.xz` — Compressed kernel ELF (for debugging)
+            - `modules-*.tar.xz` — Kernel modules
+            - `config-*` — Kernel configuration file
+          files: artifacts/*
+          draft: false
+          prerelease: ${{ inputs.branch != 'stable' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
