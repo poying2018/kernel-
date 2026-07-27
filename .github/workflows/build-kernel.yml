@@ -134,7 +134,7 @@ jobs:
           KVER="${{ inputs.kernel_version }}"
           echo "Downloading RT patch for kernel ${KVER}..."
           RT_BASE="https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt"
-          # Try to find the latest RT patch
+          # Try to find the latest RT patch (updated)
           for RT_VER in $(seq 20 -1 1); do
             URL="${RT_BASE}/${KVER}/patch-${KVER}-rt${RT_VER}.patch.xz"
             echo "Trying ${URL}..."
