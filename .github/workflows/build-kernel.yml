@@ -196,8 +196,16 @@ jobs:
           echo "Source repository: $SOURCE_REPO"
           echo "Source reference: $SOURCE_REF"
           git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src
+
+          # Detect and descend into kernel source subtree
           cd linux-src
-          if [[ "$DISTRIBUTION" == "ubuntu" && "$REQUESTED_VERSION" == "distro-default" ]]; then RESOLVED_VERSION=$(make kernelversion); fi
+          if [ -d linux ] && [ -f linux/Makefile ] && [ ! -f Makefile ]; then
+            echo "Detected kernel source in linux/ subdirectory (Debian Salsa layout)"
+            cd linux
+          fi
+          echo "KERNEL_SRC_DIR=$(pwd)" >> "$GITHUB_ENV"
+          echo "SOURCE_REPO=$SOURCE_REPO" >> "$GITHUB_ENV"
+          echo "SOURCE_REF=$SOURCE_REF" >> "$GITHUB_ENV"
           echo "SOURCE_KERNEL_VERSION=$RESOLVED_VERSION" >> "$GITHUB_ENV"
           echo "Source HEAD: $(git log --oneline -1)"
           echo "Kernel version: $(make kernelversion)"
@@ -207,7 +215,7 @@ jobs:
         if: inputs.flavour == 'rt-amd64'
         continue-on-error: true
         run: |
-          cd linux-src
+          cd $KERNEL_SRC_DIR
           KVER="${SOURCE_KERNEL_VERSION}"
           echo "Downloading RT patch for kernel ${KVER}..."
           RT_BASE="https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt"
@@ -235,7 +243,7 @@ jobs:
         if: inputs.flavour == 'liquorix-amd64'
         continue-on-error: true
         run: |
-          cd linux-src
+          cd $KERNEL_SRC_DIR
           git clone --depth 1 https://github.com/damentz/liquorix-package.git /tmp/liquorix
           KVER="${SOURCE_KERNEL_VERSION}"
           PATCH_FILE=$(find /tmp/liquorix -name "*${KVER}*" -name "*.patch" | head -1)
@@ -249,7 +257,7 @@ jobs:
 
       - name: Configure kernel
         run: |
-          cd linux-src
+          cd $KERNEL_SRC_DIR
           make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
 
           ./scripts/config --disable CONFIG_DEBUG_INFO
@@ -319,7 +327,7 @@ jobs:
 
       - name: Build kernel (make deb-pkg)
         run: |
-          cd linux-src
+          cd $KERNEL_SRC_DIR
           NPROC=$(nproc)
           echo "Building with ${NPROC} parallel jobs..."
           echo "ccache stats before build:"
@@ -342,7 +350,7 @@ jobs:
 
       - name: Collect build artifacts
         run: |
-          cd linux-src
+          cd $KERNEL_SRC_DIR
           ARTIFACT_DIR="${{ github.workspace }}/artifacts"
           mkdir -p ${ARTIFACT_DIR}
 
