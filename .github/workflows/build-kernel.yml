@@ -182,7 +182,8 @@ jobs:
             riscv64) KERNEL_ARCH="riscv" ;;
             *)       KERNEL_ARCH="${{ inputs.arch }}" ;;
           esac
-          echo "Configuring kernel (arch=${KERNEL_ARCH})..."
+          echo "Configuring kernel (arch=\)..."
+echo "KERNEL_ARCH=\" >> \
           make ARCH=${KERNEL_ARCH} ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
 
           # Disable debug info for faster builds
