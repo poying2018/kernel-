@@ -1,67 +1,57 @@
-# Debian Linux Kernel GitHub Action
+# Linux Kernel GitHub Action
 
-自动编译 Debian Linux 内核的 GitHub Actions 工作流。
+自动编译 Debian、Ubuntu 和 Arch Linux 目标内核的 GitHub Actions 工作流。
 
-## 功能特性
+## 支持的选择
 
-- 支持多种架构：amd64、arm64、armhf、riscv64
-- 支持多个 Debian 发行版：buster、bullseye、bookworm、trixie
-- 支持多个 Debian 分支：stable、testing、unstable、experimental
-- 支持多种内核版本：5.10、6.1、6.6、6.12
-- 支持多种内核 flavour：amd64、amd64-cloud、arm64、arm64-cloud、rt-amd64、liquorix-amd64
-- 高效编译：ccache + 并行编译 + 禁用调试信息
-- 自动上传到 GitHub Actions Artifact
+- 架构必须首先选择：amd64、arm64、armhf、riscv64
+- 发行版：Debian、Ubuntu、Arch Linux
+- 发布线：Debian Bookworm、Debian Trixie、Ubuntu Jammy、Ubuntu Noble、Arch Rolling
+- 分支：stable、testing、unstable、experimental、main、rolling
+- 内核版本：distro-default、5.10、6.1、6.6、6.8、6.12
+- 内核 flavour：amd64、amd64-cloud、arm64、arm64-cloud、rt-amd64、liquorix-amd64
 
 ## 使用方法
 
-1. 进入 GitHub 仓库的 **Actions** 标签页
-2. 选择 **Build Debian Linux Kernel** 工作流
-3. 点击 **Run workflow**
-4. 填写以下参数：
+1. 进入 GitHub 仓库的 **Actions** 标签页。
+2. 选择 **Build Linux Kernel (Debian, Ubuntu, Arch Linux)**。
+3. 点击 **Run workflow**。
+4. 按顺序选择架构、发行版、发布线、分支、内核版本和 flavour。
+5. 构建完成后，在该次运行页面的 **Artifacts** 区域下载产物。
 
-| 参数 | 说明 | 可选值 |
-|------|------|--------|
-| **Architecture** | 目标架构 | amd64, arm64, armhf, riscv64 |
-| **Distribution** | Debian 发行版本 | buster, bullseye, bookworm, trixie |
-| **Branch** | Debian 发布分支 | stable, testing, unstable, experimental |
-| **Kernel Version** | 内核版本 | 5.10, 6.1, 6.6, 6.12 |
-| **Flavour** | 内核插件/Flavour | amd64, amd64-cloud, arm64, arm64-cloud, rt-amd64, liquorix-amd64 |
-
-5. 点击 **Run workflow** 开始编译
-
-## 编译优化
-
-- **ccache**：缓存编译结果，加速重复编译
-- **并行编译**：使用 `make -j$(nproc)` 充分利用 CPU 核心
-- **禁用调试信息**：`CONFIG_DEBUG_INFO_NONE=y` 大幅减少编译时间
-- **浅克隆**：`git clone --depth 1` 减少源码下载时间
-- **缓存持久化**：通过 `actions/cache` 在多次运行间保持 ccache
-
-## 输出产物
-
-编译完成后，在该次 GitHub Actions 运行页面的 Artifacts 区域下载，包含：
-
-- `*.deb` — Debian 内核安装包
-- `bzImage` / `Image` — 内核启动镜像
-- `vmlinux.xz` — 压缩的内核 ELF 文件（用于调试）
-- `modules-*.tar.xz` — 内核模块压缩包
-- `config-*` — 内核配置文件
+发行版与发布线必须匹配，例如 `debian` 配 `debian-bookworm`，`ubuntu` 配 `ubuntu-noble`，`archlinux` 配 `arch-rolling`。工作流会在源码步骤中校验不匹配组合并立即给出明确错误。
 
 ## 源码来源
 
-所有源码均来自官方开源项目：
+所有源码均来自已公开、可验证的官方项目：
 
-- **Linux 内核源码**：https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux
-- **Liquorix 内核补丁**：https://github.com/damentz/liquorix-package
-- **RT 内核补丁**：https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/
+- Debian：Debian Kernel Team 的 Salsa 仓库，使用 `debian/6.1/bookworm` 或 `debian/6.12/trixie`。
+- Ubuntu：Ubuntu Kernel Team 的 Launchpad 仓库，使用 Jammy 或 Noble 的 `master`/官方 Ubuntu 标签。
+- Arch Linux：Arch Linux 官方 GitLab packaging 仓库读取默认 `pkgver`，再从 Linux 官方 kernel.org 稳定源码获取对应版本。
+- RT：kernel.org 官方 RT 镜像。
+- Liquorix：公开的 Liquorix 项目仓库。
 
-## 本地构建
+## 编译优化
+
+- ccache 缓存重复编译结果。
+- `make -j$(nproc)` 使用运行器全部 CPU 核心。
+- 浅克隆减少源码下载时间。
+- 禁用调试信息以减少编译时间和产物体积。
+- 对格式警告关闭 fatal warning，避免旧发行版源码在新 GCC 上因兼容性警告中断。
+
+## 输出产物
+
+- `*.deb`：统一的内核 Debian 构建包。
+- `bzImage` / `Image`：内核启动镜像。
+- `vmlinux.xz`：压缩内核 ELF 文件。
+- `modules-*.tar.xz`：内核模块。
+- `config-*`：最终内核配置。
+
+## 本地脚本
 
 ```bash
 chmod +x scripts/build-kernel.sh
 ./scripts/build-kernel.sh amd64 bookworm stable 6.1 amd64
 ```
 
-## 构建说明
-
-`kernel_version` 用于选择 Linux 官方稳定源码标签；`distro` 和 `branch` 会写入构建参数与 Artifact 名称，便于区分目标 Debian 发布版本和分支。所有源码均从 Linux 官方源码库、kernel.org RT 镜像或公开的 Liquorix 项目获取。
+本地脚本仍用于原有 Debian/上游 Linux 构建流程；GitHub Actions 工作流提供完整的发行版源码选择。
