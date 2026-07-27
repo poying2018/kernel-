@@ -116,17 +116,11 @@ jobs:
           ccache -z
           ccache -s
 
-      - name: Clone Debian kernel source
+      - name: Clone Linux kernel source
         run: |
-          case "${{ inputs.branch }}" in
-            stable)       DEBIAN_BRANCH="bookworm" ;;
-            testing)      DEBIAN_BRANCH="trixie" ;;
-            unstable)     DEBIAN_BRANCH="sid" ;;
-            experimental) DEBIAN_BRANCH="experimental" ;;
-          esac
-          echo "Cloning Debian kernel source (branch: ${DEBIAN_BRANCH})..."
-          git clone --depth 1 --branch "${DEBIAN_BRANCH}" \
-            https://salsa.debian.org/kernel/linux.git linux-src
+          echo "Cloning Linux kernel source (version: v${{ inputs.kernel_version }})..."
+          git clone --depth 1 --branch "v${{ inputs.kernel_version }}" \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux-src
           cd linux-src
           echo "Source HEAD: $(git log --oneline -1)"
           echo "Kernel version: $(make kernelversion)"
@@ -341,7 +335,7 @@ jobs:
             - Built with ccache (cache key: `ccache-${{ inputs.arch }}-${{ inputs.distro }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-*`)
             - Debug info disabled (`CONFIG_DEBUG_INFO_NONE=y`)
             - Parallel compilation with `-j$(nproc)`
-            - Source: https://salsa.debian.org/kernel/linux
+            - Source: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux
 
             ### Artifacts
             - `*.deb` — Debian kernel packages

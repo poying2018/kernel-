@@ -51,7 +51,7 @@
 
 所有源码均来自官方开源项目：
 
-- **Debian 内核源码**：https://salsa.debian.org/kernel/linux
+- **Linux 内核源码**：https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux
 - **Liquorix 内核补丁**：https://github.com/damentz/liquorix-package
 - **RT 内核补丁**：https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/
 
@@ -64,7 +64,7 @@ chmod +x scripts/build-kernel.sh
 
 ## 分支映射
 
-| 输入分支 | Debian 内核源码分支 |
+| 输入分支 | Linux 内核源码分支 |
 |----------|---------------------|
 | stable | bookworm |
 | testing | trixie |
