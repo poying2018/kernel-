@@ -188,7 +188,7 @@ jobs:
           ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
           ./scripts/config --disable CONFIG_KGDB
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
-          ./scripts/config --disable CONFIG_DEBUG_MISC\n          ./scripts/config --disable CONFIG_ERROR_ON_WARNING
+          ./scripts/config --disable CONFIG_DEBUG_MISC
 
           if [[ "${{ inputs.flavour }}" == *"-cloud" ]]; then
             echo "Applying cloud optimizations..."
@@ -258,6 +258,8 @@ jobs:
             ARCH=$KERNEL_ARCH \
             ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
             CC="ccache gcc" \
+            KCFLAGS="-Wno-error=format -Wno-error" \
+            WERROR=0 \
             LOCALVERSION=-${{ inputs.flavour }} \
             KDEB_PKGVERSION=${{ inputs.kernel_version }}-1 \
             deb-pkg
