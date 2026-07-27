@@ -59,7 +59,7 @@ env:
   FLAVOUR: ${{ inputs.flavour }}
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 4G
-  CCACHE_COMPRESS: 1
+  CCACHE_COMPRESS: true
 
 jobs:
   build:
