@@ -138,48 +138,41 @@ jobs:
           git config --global http.lowSpeedTime 120
           CLONE_SUCCESS=false
           for attempt in 1 2 3 4 5; do
-            echo "Clone attempt $attempt/5..."
-            CLONE_ERROR=""
-            if git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>err.log; then
+            echo "Clone attempt DOLLARattempt/5..."
+            if git clone --depth 1 --branch "DOLLARSOURCE_REF" "DOLLARSOURCE_REPO" linux-src 2>&1 | tee /tmp/clone.log; then
               if [ -f linux-src/Makefile ]; then
                 CLONE_SUCCESS=true
                 break
               fi
-            else
-              CLONE_ERROR=unknown error
-              echo "Clone failed: $CLONE_ERROR"
             fi
-            # Try GitHub mirror
-            if [ "$attempt" -ge 2 ]; then
+            echo "Clone attempt DOLLARattempt failed. Waiting before retry..."
+            # Try GitHub mirror on attempt 2+
+            if [ "DOLLARattempt" -ge 2 ] && [ "DOLLARattempt" -le 3 ]; then
               echo "Trying GitHub mirror..."
-              if git clone --depth 1 --branch "$SOURCE_REF" "https://github.com/torvalds/linux.git" linux-src 2>err.log; then
+              if git clone --depth 1 --branch "DOLLARSOURCE_REF" "https://github.com/torvalds/linux.git" linux-src 2>&1 | tee /tmp/clone.log; then
                 if [ -f linux-src/Makefile ]; then
                   CLONE_SUCCESS=true
                   break
                 fi
-              else
-                CLONE_ERROR=unknown error
-                echo "GitHub mirror failed: $CLONE_ERROR"
               fi
             fi
-            # Try Tsinghua mirror
-            if [ "$attempt" -ge 3 ]; then
+            # Try Tsinghua mirror on attempt 4+
+            if [ "DOLLARattempt" -ge 4 ]; then
               echo "Trying Tsinghua mirror..."
-              if git clone --depth 1 --branch "$SOURCE_REF" "https://mirrors.tuna.tsinghua.edu.cn/git/linux-stable.git" linux-src 2>err.log; then
+              if git clone --depth 1 --branch "DOLLARSOURCE_REF" "https://mirrors.tuna.tsinghua.edu.cn/git/linux-stable.git" linux-src 2>&1 | tee /tmp/clone.log; then
                 if [ -f linux-src/Makefile ]; then
                   CLONE_SUCCESS=true
                   break
                 fi
-              else
-                CLONE_ERROR=unknown error
-                echo "Tsinghua mirror failed: $CLONE_ERROR"
               fi
             fi
             sleep 10
           done
 
-          if [ "$CLONE_SUCCESS" = false ]; then
+          if [ "DOLLARCLONE_SUCCESS" = false ]; then
             echo "ERROR: Failed to clone kernel source after multiple attempts."
+            echo "Last clone output:"
+            cat /tmp/clone.log 2>/dev/null || echo "(no log available)"
             exit 1
           fi
 
