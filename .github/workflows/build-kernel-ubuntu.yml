@@ -113,7 +113,6 @@ jobs:
 
       - name: Select kernel source
         run: |
-          set -euo pipefail
           RELEASE="${{ inputs.release_line }}"
           KVER="${{ inputs.kernel_version }}"
 
