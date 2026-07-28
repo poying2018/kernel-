@@ -468,37 +468,35 @@ jobs:
           echo "ccache stats before build:"
           ccache -s
 
-          # Common make flags
-          MAKE_FLAGS="ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE}"
+          # Set compiler based on target architecture
           if [ -n "${CROSS_COMPILE:-}" ]; then
-            MAKE_FLAGS+=" CC=\"ccache ${CROSS_COMPILE}gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+            CC="ccache ${CROSS_COMPILE}gcc"
           else
-            MAKE_FLAGS+=" CC=\"ccache gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+            CC="ccache gcc"
           fi
-          MAKE_FLAGS+=" LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1"
+
+          # Common flags
+          COMMON_FLAGS="ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC=\"$CC\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1"
 
           if [ "${{ inputs.arch }}" != "amd64" ]; then
             # Cross-compilation: dpkg-buildpackage does not support cross-compilation natively.
             echo "Cross-compiling for $KERNEL_ARCH..."
-            make -j$NPROC $MAKE_FLAGS
-            make -j$NPROC $MAKE_FLAGS modules
-
+            make -j$NPROC $COMMON_FLAGS
+            make -j$NPROC $COMMON_FLAGS modules
             if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
-              make -j$NPROC $MAKE_FLAGS dtbs
+              make -j$NPROC $COMMON_FLAGS dtbs
             fi
-
             echo "Cross-compilation build complete."
           else
             # Native build: use bindeb-pkg
             echo "Native build for $KERNEL_ARCH using bindeb-pkg..."
-            make -j$NPROC $MAKE_FLAGS bindeb-pkg
+            make -j$NPROC $COMMON_FLAGS bindeb-pkg
           fi
 
           echo ""
           echo "ccache stats after build:"
           ccache -s
         timeout-minutes: 300
-
 
       - name: Collect build artifacts
         run: |
