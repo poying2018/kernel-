@@ -93,7 +93,7 @@ jobs:
           set -euo pipefail
           KVER="${{ inputs.kernel_version }}"
 
-          SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+          SOURCE_REPO="https://github.com/torvalds/linux.git"
 
           if [[ "$KVER" == "distro-default" ]]; then
             # Resolve Arch's current stable kernel from kernel.org
