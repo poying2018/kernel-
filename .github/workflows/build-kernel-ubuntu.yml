@@ -296,7 +296,7 @@ jobs:
           else
             CC="ccache gcc"
           fi
-          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" defconfig
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="gcc" defconfig 2>&1 | tail -30
           ./scripts/config --disable CONFIG_DEBUG_INFO
           ./scripts/config --enable CONFIG_DEBUG_INFO_NONE
           ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
