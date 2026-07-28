@@ -260,6 +260,7 @@ jobs:
             ./scripts/config --set-val CONFIG_HZ 1000 2>/dev/null || true
             ./scripts/config --set-val CONFIG_HZ_PERIODIC 0 2>/dev/null || true
           fi
+          ./scripts/config --disable CONFIG_WERROR
           make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" olddefconfig
 
       - name: Build kernel

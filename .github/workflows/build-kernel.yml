@@ -472,6 +472,7 @@ jobs:
             ./scripts/config --disable CONFIG_PREEMPT
           fi
 
+          ./scripts/config --disable CONFIG_WERROR
           make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" olddefconfig
 
       - name: Build kernel
