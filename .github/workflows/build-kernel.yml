@@ -438,7 +438,7 @@ jobs:
           else
             CC="ccache gcc"
           fi
-          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="gcc" defconfig 2>&1 | tail -30
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="gcc" defconfig
 
           # Disable debug info for faster build
           ./scripts/config --disable CONFIG_DEBUG_INFO
