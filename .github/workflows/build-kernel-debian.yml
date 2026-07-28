@@ -168,10 +168,32 @@ jobs:
           done
 
           if [ "$CLONE_SUCCESS" = false ]; then
-            echo "ERROR: Failed to clone kernel source after multiple attempts."
-            echo "Last clone output:"
-            cat /tmp/clone.log 2>/dev/null || echo "(no log available)"
-            exit 1
+            echo "Git clone failed, trying tarball download..."
+            KERNEL_VER="${SOURCE_KERNEL_VERSION}"
+            MAJOR_VER="${KERNEL_VER%%.*}"
+            TARBALL_DIR=$(mktemp -d)
+            TARBALL_DOWNLOADED=false
+            # Try multiple tarball sources
+            for TARBALL_URL in \
+              "https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
+              "https://mirrors.tuna.tsinghua.edu.cn/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
+              "https://github.com/torvalds/linux/archive/refs/tags/v${KERNEL_VER}.tar.gz"; do
+              echo "Trying tarball: $TARBALL_URL"
+              if wget -q --timeout=120 -O "${TARBALL_DIR}/kernel.tar" "$TARBALL_URL" 2>/dev/null; then
+                echo "Tarball downloaded, extracting..."
+                mkdir -p linux-src && tar xf "${TARBALL_DIR}/kernel.tar" -C linux-src --strip-components=1 2>/dev/null
+                if [ -f linux-src/Makefile ]; then
+                  TARBALL_DOWNLOADED=true
+                  break
+                fi
+              fi
+            done
+            if [ "$TARBALL_DOWNLOADED" = false ]; then
+              echo "ERROR: Failed to download kernel source via git or tarball."
+              echo "Last clone output:"
+              cat /tmp/clone.log 2>/dev/null || echo "(no log available)"
+              exit 1
+            fi
           fi
 
           cd linux-src
