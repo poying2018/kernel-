@@ -90,7 +90,6 @@ jobs:
 
       - name: Select kernel source
         run: |
-          set -uo pipefail
           KVER="${{ inputs.kernel_version }}"
 
           SOURCE_REPO="https://github.com/torvalds/linux.git"
