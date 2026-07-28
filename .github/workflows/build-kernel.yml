@@ -328,25 +328,49 @@ jobs:
           echo "Source repository: $SOURCE_REPO"
           echo "Source reference: $SOURCE_REF"
           # Try multiple sources for reliability
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 120
           CLONE_SUCCESS=false
-          for attempt in 1 2 3; do
-            echo "Clone attempt $attempt..."
-            if git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1; then
+          for attempt in 1 2 3 4 5; do
+            echo "Clone attempt $attempt/5..."
+            CLONE_ERROR=""
+            if git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>err.log; then
               if [ -f linux-src/Makefile ]; then
                 CLONE_SUCCESS=true
                 break
               fi
+            else
+              CLONE_ERROR=unknown error
+              echo "Clone failed: $CLONE_ERROR"
             fi
+            # Try GitHub mirror
             if [ "$attempt" -ge 2 ]; then
               echo "Trying GitHub mirror..."
-              if git clone --depth 1 --branch "$SOURCE_REF" "https://github.com/torvalds/linux.git" linux-src 2>&1; then
+              if git clone --depth 1 --branch "$SOURCE_REF" "https://github.com/torvalds/linux.git" linux-src 2>err.log; then
                 if [ -f linux-src/Makefile ]; then
                   CLONE_SUCCESS=true
                   break
                 fi
+              else
+                CLONE_ERROR=unknown error
+                echo "GitHub mirror failed: $CLONE_ERROR"
               fi
             fi
-            sleep 5
+            # Try Tsinghua mirror
+            if [ "$attempt" -ge 3 ]; then
+              echo "Trying Tsinghua mirror..."
+              if git clone --depth 1 --branch "$SOURCE_REF" "https://mirrors.tuna.tsinghua.edu.cn/git/linux-stable.git" linux-src 2>err.log; then
+                if [ -f linux-src/Makefile ]; then
+                  CLONE_SUCCESS=true
+                  break
+                fi
+              else
+                CLONE_ERROR=unknown error
+                echo "Tsinghua mirror failed: $CLONE_ERROR"
+              fi
+            fi
+            sleep 10
           done
 
           if [ "$CLONE_SUCCESS" = false ]; then
