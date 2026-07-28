@@ -137,7 +137,7 @@ jobs:
           if [[ "$KVER" != "distro-default" ]]; then
             [[ "$KVER" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "ERROR: invalid kernel version format '$KVER' (expected X.Y)"; exit 1; }
             # Verify the tag exists on kernel.org
-            if [[ "$DISTRIBUTION" == "archlinux" ]] || [[ "$KVER" != "distro-default" ]]; then
+            if [[ "$DIST" == "archlinux" ]] || [[ "$KVER" != "distro-default" ]]; then
               echo "  Kernel version: $KVER (from kernel.org stable)"
             fi
           fi
