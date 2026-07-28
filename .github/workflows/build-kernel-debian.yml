@@ -195,14 +195,15 @@ jobs:
         run: |
           cd $KERNEL_SRC_DIR
           if [ -f scripts/gcc-version.sh ]; then
-            cat > scripts/gcc-version.sh << 'PATCH_EOF'
-#!/bin/sh
-# Patched for compatibility - outputs GCC major version * 10000
-exec "$@" -dumpversion 2>/dev/null | sed 's/\\..*//; s/^/100/; s/$/00/' || echo "120000"
-PATCH_EOF
+            # Replace gcc-version.sh with a version that always returns a valid version
+            # This bypasses the "compiler not supported" error for newer GCC on older kernels
+            echo '#!/bin/sh' > scripts/gcc-version.sh
+            echo '# Patched for compatibility with newer GCC versions' >> scripts/gcc-version.sh
+            echo 'exec "$@" -dumpversion 2>/dev/null | sed "s/\\..*//; s/^/100/; s/$/00/" || echo "120000"' >> scripts/gcc-version.sh
             chmod +x scripts/gcc-version.sh
             echo "Patched scripts/gcc-version.sh for compiler compatibility"
           fi
+
 
       - name: Configure kernel
         run: |
