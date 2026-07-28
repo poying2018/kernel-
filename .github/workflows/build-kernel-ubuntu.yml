@@ -170,68 +170,42 @@ jobs:
 
           echo "Source: $SOURCE_REPO"
           echo "Ref: $SOURCE_REF"
-          # Try multiple sources for reliability
-          git config --global http.postBuffer 524288000
-          git config --global http.lowSpeedLimit 1000
-          git config --global http.lowSpeedTime 120
-          CLONE_SUCCESS=false
-          for attempt in 1 2 3 4 5; do
-            echo "Clone attempt $attempt/5..."
-            if git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1 | tee /tmp/clone.log; then
+          # Download kernel source as tarball (more reliable than git clone)
+          KERNEL_VER="${SOURCE_KERNEL_VERSION}"
+          MAJOR_VER="${KERNEL_VER%%.*}"
+          TARBALL_DIR=$(mktemp -d)
+          DOWNLOAD_SUCCESS=false
+          for TARBALL_URL in \
+            "https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
+            "https://mirrors.tuna.tsinghua.edu.cn/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
+            "https://mirrors.ustc.edu.cn/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz"; do
+            echo "Trying tarball: $TARBALL_URL"
+            if wget -q --timeout=180 -O "${TARBALL_DIR}/kernel.tar.xz" "$TARBALL_URL" 2>/dev/null; then
+              echo "Tarball downloaded, extracting..."
+              mkdir -p linux-src && tar xJf "${TARBALL_DIR}/kernel.tar.xz" -C linux-src --strip-components=1 2>/dev/null
               if [ -f linux-src/Makefile ]; then
-                CLONE_SUCCESS=true
+                DOWNLOAD_SUCCESS=true
                 break
               fi
             fi
-            echo "Clone attempt $attempt failed. Waiting before retry..."
-            if [ "$attempt" -ge 2 ] && [ "$attempt" -le 3 ]; then
-              echo "Trying GitHub mirror..."
-              if git clone --depth 1 --branch "$SOURCE_REF" "https://github.com/torvalds/linux.git" linux-src 2>&1 | tee /tmp/clone.log; then
-                if [ -f linux-src/Makefile ]; then
-                  CLONE_SUCCESS=true
-                  break
-                fi
-              fi
-            fi
-            if [ "$attempt" -ge 4 ]; then
-              echo "Trying Tsinghua mirror..."
-              if git clone --depth 1 --branch "$SOURCE_REF" "https://mirrors.tuna.tsinghua.edu.cn/git/linux-stable.git" linux-src 2>&1 | tee /tmp/clone.log; then
-                if [ -f linux-src/Makefile ]; then
-                  CLONE_SUCCESS=true
-                  break
-                fi
-              fi
-            fi
-            sleep 10
           done
-
-          if [ "$CLONE_SUCCESS" = false ]; then
-            echo "Git clone failed, trying tarball download..."
-            KERNEL_VER="${SOURCE_KERNEL_VERSION}"
-            MAJOR_VER="${KERNEL_VER%%.*}"
-            TARBALL_DIR=$(mktemp -d)
-            TARBALL_DOWNLOADED=false
-            # Try multiple tarball sources
-            for TARBALL_URL in \
-              "https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
-              "https://mirrors.tuna.tsinghua.edu.cn/kernel/v${MAJOR_VER}.x/linux-${KERNEL_VER}.tar.xz" \
-              "https://github.com/torvalds/linux/archive/refs/tags/v${KERNEL_VER}.tar.gz"; do
-              echo "Trying tarball: $TARBALL_URL"
-              if wget -q --timeout=120 -O "${TARBALL_DIR}/kernel.tar" "$TARBALL_URL" 2>/dev/null; then
-                echo "Tarball downloaded, extracting..."
-                mkdir -p linux-src && tar xf "${TARBALL_DIR}/kernel.tar" -C linux-src --strip-components=1 2>/dev/null
+          # Fallback to git clone if tarball fails
+          if [ "$DOWNLOAD_SUCCESS" = false ]; then
+            echo "Tarball download failed, trying git clone..."
+            for attempt in 1 2 3; do
+              echo "Clone attempt $attempt/3..."
+              if git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1; then
                 if [ -f linux-src/Makefile ]; then
-                  TARBALL_DOWNLOADED=true
+                  DOWNLOAD_SUCCESS=true
                   break
                 fi
               fi
+              sleep 5
             done
-            if [ "$TARBALL_DOWNLOADED" = false ]; then
-              echo "ERROR: Failed to download kernel source via git or tarball."
-              echo "Last clone output:"
-              cat /tmp/clone.log 2>/dev/null || echo "(no log available)"
-              exit 1
-            fi
+          fi
+          if [ "$DOWNLOAD_SUCCESS" = false ]; then
+            echo "ERROR: Failed to download kernel source via tarball or git clone."
+            exit 1
           fi
 
           cd linux-src
