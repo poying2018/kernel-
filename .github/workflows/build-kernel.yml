@@ -1,10 +1,10 @@
-name: Build Linux Kernel (Debian, Ubuntu, Arch Linux)
+name: Build Linux Kernel (Multi-Distro)
 
 on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "Target Architecture"
+        description: "1. Target Architecture (choose first)"
         required: true
         type: choice
         options:
@@ -13,7 +13,7 @@ on:
           - armhf
           - riscv64
       distribution:
-        description: "Linux Distribution"
+        description: "2. Linux Distribution"
         required: true
         type: choice
         options:
@@ -21,7 +21,7 @@ on:
           - ubuntu
           - archlinux
       release_line:
-        description: "Distribution Release Line"
+        description: "3. Distribution Release Line (depends on Distribution)"
         required: true
         type: choice
         options:
@@ -29,31 +29,51 @@ on:
           - debian-trixie
           - ubuntu-jammy
           - ubuntu-noble
+          - ubuntu-oracular
+          - ubuntu-plucky
           - arch-rolling
       branch:
-        description: "Distribution Branch"
+        description: "4. Distribution Branch (depends on Release Line)"
         required: true
         type: choice
         options:
           - stable
           - testing
-          - unstable
-          - experimental
           - main
           - rolling
       kernel_version:
-        description: "Kernel Version (distro-default follows the selected distribution)"
+        description: "5. Kernel Version (depends on Release Line)"
         required: true
         type: choice
         options:
           - distro-default
+          - "5.4"
           - "5.10"
+          - "5.15"
+          - "6.0"
           - "6.1"
+          - "6.2"
+          - "6.3"
+          - "6.4"
+          - "6.5"
           - "6.6"
+          - "6.7"
           - "6.8"
+          - "6.9"
+          - "6.10"
+          - "6.11"
           - "6.12"
+          - "6.13"
+          - "6.14"
+          - "6.15"
+          - "6.16"
+          - "6.17"
+          - "6.18"
+          - "6.19"
+          - "7.0"
+          - "7.1"
       flavour:
-        description: "Kernel Flavour"
+        description: "6. Kernel Flavour"
         required: true
         type: choice
         options:
@@ -76,13 +96,81 @@ jobs:
 
     steps:
       - name: Checkout workflow repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Validate input combination
+        run: |
+          set -euo pipefail
+          ARCH="${{ inputs.arch }}"
+          DIST="${{ inputs.distribution }}"
+          RELEASE="${{ inputs.release_line }}"
+          BRANCH="${{ inputs.branch }}"
+          KVER="${{ inputs.kernel_version }}"
+          FLAVOUR="${{ inputs.flavour }}"
+
+          # Validate distribution matches release_line
+          case "$RELEASE" in
+            debian-*)   [[ "$DIST" == "debian" ]]   || { echo "ERROR: release_line $RELEASE requires distribution=debian"; exit 1; } ;;
+            ubuntu-*)   [[ "$DIST" == "ubuntu" ]]   || { echo "ERROR: release_line $RELEASE requires distribution=ubuntu"; exit 1; } ;;
+            arch-*)     [[ "$DIST" == "archlinux" ]] || { echo "ERROR: release_line $RELEASE requires distribution=archlinux"; exit 1; } ;;
+          esac
+
+          # Validate branch per distribution
+          case "$DIST" in
+            debian)
+              case "$RELEASE" in
+                debian-bookworm) [[ "$BRANCH" == "stable" ]]   || { echo "ERROR: debian-bookworm requires branch=stable"; exit 1; } ;;
+                debian-trixie)   [[ "$BRANCH" == "testing" ]]   || { echo "ERROR: debian-trixie requires branch=testing"; exit 1; } ;;
+              esac
+              ;;
+            ubuntu)
+              case "$BRANCH" in
+                stable|main) ;; *) { echo "ERROR: ubuntu requires branch=stable or main (got '$BRANCH')"; exit 1; } ;;
+              esac
+              ;;
+            archlinux)
+              [[ "$BRANCH" == "rolling" ]] || { echo "ERROR: archlinux requires branch=rolling"; exit 1; }
+              ;;
+          esac
+
+          # Validate kernel_version format (x.y format, must be a valid stable release)
+          if [[ "$KVER" != "distro-default" ]]; then
+            [[ "$KVER" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "ERROR: invalid kernel version format '$KVER' (expected X.Y)"; exit 1; }
+            # Verify the tag exists on kernel.org
+            if [[ "$DISTRIBUTION" == "archlinux" ]] || [[ "$KVER" != "distro-default" ]]; then
+              echo "  Kernel version: $KVER (from kernel.org stable)"
+            fi
+          fi
+
+          # Validate flavour compatibility with arch
+          case "$ARCH" in
+            amd64)
+              [[ "$FLAVOUR" == "amd64" || "$FLAVOUR" == "amd64-cloud" || "$FLAVOUR" == "rt-amd64" || "$FLAVOUR" == "liquorix-amd64" ]] || { echo "ERROR: arch=amd64 supports amd64/amd64-cloud/rt-amd64/liquorix-amd64 (got '$FLAVOUR')"; exit 1; }
+              ;;
+            arm64)
+              [[ "$FLAVOUR" == "arm64" || "$FLAVOUR" == "arm64-cloud" ]] || { echo "ERROR: arch=arm64 supports arm64/arm64-cloud (got '$FLAVOUR')"; exit 1; }
+              ;;
+            armhf)
+              [[ "$FLAVOUR" == "arm64" ]] || { echo "ERROR: arch=armhf uses arm64 flavour"; exit 1; }
+              ;;
+            riscv64)
+              [[ "$FLAVOUR" == "amd64" ]] || { echo "ERROR: arch=riscv64 uses amd64 flavour"; exit 1; }
+              ;;
+          esac
+
+          echo "✓ Input validation passed"
+          echo "  Architecture: $ARCH"
+          echo "  Distribution: $DIST"
+          echo "  Release: $RELEASE"
+          echo "  Branch: $BRANCH"
+          echo "  Kernel: $KVER"
+          echo "  Flavour: $FLAVOUR"
 
       - name: Set up build environment
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
-            build-essential bc bison flex libssl-dev libelf-dev dwarves \
+            build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
             ccache fakeroot devscripts debhelper git wget xz-utils kmod cpio rsync
 
       - name: Set architecture mapping
@@ -115,7 +203,7 @@ jobs:
           esac
 
       - name: Restore ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ inputs.arch }}-${{ inputs.distribution }}-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
@@ -146,69 +234,108 @@ jobs:
           SOURCE_REF=""
           RESOLVED_VERSION="$REQUESTED_VERSION"
 
+          # Default: kernel.org upstream stable (works for any version)
+          SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+          SOURCE_REF="v${REQUESTED_VERSION}"
+          RESOLVED_VERSION="$REQUESTED_VERSION"
+
           case "$RELEASE_LINE" in
+            # Debian: use kernel.org upstream, any version supported
             debian-bookworm)
-              [[ "$DISTRIBUTION" == "debian" && "$BRANCH" == "stable" ]] || { echo "debian-bookworm requires distribution=debian and branch=stable"; exit 1; }
-              [[ "$REQUESTED_VERSION" == "distro-default" || "$REQUESTED_VERSION" == "6.1" ]] || { echo "debian-bookworm supports distro-default or 6.1"; exit 1; }
-              SOURCE_REPO="https://salsa.debian.org/kernel-team/linux.git"
-              SOURCE_REF="debian/6.1/bookworm"
-              RESOLVED_VERSION="6.1"
+              if [[ "$REQUESTED_VERSION" == "distro-default" ]]; then
+                SOURCE_REF="v6.1"
+                RESOLVED_VERSION="6.1"
+              else
+                SOURCE_REF="v${REQUESTED_VERSION}"
+                RESOLVED_VERSION="$REQUESTED_VERSION"
+              fi
               ;;
             debian-trixie)
-              [[ "$DISTRIBUTION" == "debian" && "$BRANCH" == "testing" ]] || { echo "debian-trixie requires distribution=debian and branch=testing"; exit 1; }
-              [[ "$REQUESTED_VERSION" == "distro-default" || "$REQUESTED_VERSION" == "6.12" ]] || { echo "debian-trixie supports distro-default or 6.12"; exit 1; }
-              SOURCE_REPO="https://salsa.debian.org/kernel-team/linux.git"
-              SOURCE_REF="debian/6.12/trixie"
-              RESOLVED_VERSION="6.12"
+              if [[ "$REQUESTED_VERSION" == "distro-default" ]]; then
+                SOURCE_REF="v6.12"
+                RESOLVED_VERSION="6.12"
+              else
+                SOURCE_REF="v${REQUESTED_VERSION}"
+                RESOLVED_VERSION="$REQUESTED_VERSION"
+              fi
               ;;
+
+            # Ubuntu: prefer Launchpad distro-specific tags, fallback to kernel.org
             ubuntu-jammy)
-              [[ "$DISTRIBUTION" == "ubuntu" && ( "$BRANCH" == "stable" || "$BRANCH" == "main" ) ]] || { echo "ubuntu-jammy requires distribution=ubuntu and branch=stable or main"; exit 1; }
               SOURCE_REPO="https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-              SOURCE_REF="master"
+              case "$REQUESTED_VERSION" in
+                distro-default|5.15) SOURCE_REF="Ubuntu-5.15.0-168.178"; RESOLVED_VERSION="5.15" ;;
+                6.2) SOURCE_REF="Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1"; RESOLVED_VERSION="6.2" ;;
+                6.5) SOURCE_REF="Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1"; RESOLVED_VERSION="6.5" ;;
+                6.8) SOURCE_REF="Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1"; RESOLVED_VERSION="6.8" ;;
+                *)
+                  # Other versions: use kernel.org upstream
+                  SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+                  SOURCE_REF="v${REQUESTED_VERSION}"
+                  RESOLVED_VERSION="$REQUESTED_VERSION"
+                  ;;
+              esac
               ;;
             ubuntu-noble)
-              [[ "$DISTRIBUTION" == "ubuntu" && ( "$BRANCH" == "stable" || "$BRANCH" == "main" ) ]] || { echo "ubuntu-noble requires distribution=ubuntu and branch=stable or main"; exit 1; }
               SOURCE_REPO="https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble"
-              SOURCE_REF="master"
+              case "$REQUESTED_VERSION" in
+                distro-default|6.8) SOURCE_REF="Ubuntu-6.8.0-57.59"; RESOLVED_VERSION="6.8" ;;
+                *)
+                  SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+                  SOURCE_REF="v${REQUESTED_VERSION}"
+                  RESOLVED_VERSION="$REQUESTED_VERSION"
+                  ;;
+              esac
               ;;
+            ubuntu-oracular)
+              SOURCE_REPO="https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/oracular"
+              case "$REQUESTED_VERSION" in
+                distro-default|6.8) SOURCE_REF="Ubuntu-6.8.0-24.24"; RESOLVED_VERSION="6.8" ;;
+                *)
+                  SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+                  SOURCE_REF="v${REQUESTED_VERSION}"
+                  RESOLVED_VERSION="$REQUESTED_VERSION"
+                  ;;
+              esac
+              ;;
+            ubuntu-plucky)
+              SOURCE_REPO="https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/plucky"
+              case "$REQUESTED_VERSION" in
+                distro-default|6.8) SOURCE_REF="Ubuntu-6.8.0-26.26"; RESOLVED_VERSION="6.8" ;;
+                *)
+                  SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+                  SOURCE_REF="v${REQUESTED_VERSION}"
+                  RESOLVED_VERSION="$REQUESTED_VERSION"
+                  ;;
+              esac
+              ;;
+
+            # Arch Linux: kernel.org stable (version from PKGBUILD or user choice)
             arch-rolling)
-              [[ "$DISTRIBUTION" == "archlinux" && "$BRANCH" == "rolling" ]] || { echo "arch-rolling requires distribution=archlinux and branch=rolling"; exit 1; }
-              git clone --depth 1 --branch main https://gitlab.archlinux.org/archlinux/packaging/packages/linux.git arch-packaging
-              ARCH_PKGVER=$(sed -n "s/^pkgver=//p" arch-packaging/PKGBUILD | head -n 1)
-              [[ -n "$ARCH_PKGVER" ]] || { echo "Unable to read Arch PKGBUILD pkgver"; exit 1; }
-              if [[ "$REQUESTED_VERSION" == "distro-default" ]]; then RESOLVED_VERSION="${ARCH_PKGVER%%.arch*}"; else RESOLVED_VERSION="$REQUESTED_VERSION"; fi
-              SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+              git clone --depth 1 --branch main https://gitlab.archlinux.org/archlinux/packaging/packages/linux.git arch-packaging 2>/dev/null
+              if [ -f arch-packaging/PKGBUILD ]; then
+                ARCH_PKGVER=$(sed -n "s/^pkgver=//p" arch-packaging/PKGBUILD | head -n 1)
+                ARCH_BASEVER="${ARCH_PKGVER%%.arch*}"
+                echo "Arch package version: $ARCH_PKGVER"
+              fi
+              if [[ "$REQUESTED_VERSION" == "distro-default" ]]; then
+                RESOLVED_VERSION="${ARCH_BASEVER:-7.1}"
+              fi
               SOURCE_REF="v${RESOLVED_VERSION}"
-              echo "Arch package version: $ARCH_PKGVER"
-              ;;
-            *)
-              echo "Unsupported release_line: $RELEASE_LINE"
-              exit 1
               ;;
           esac
 
-          if [[ "$DISTRIBUTION" == "ubuntu" && "$REQUESTED_VERSION" != "distro-default" ]]; then
-            UBUNTU_TAG=$(git ls-remote --tags "$SOURCE_REPO" "refs/tags/Ubuntu-${REQUESTED_VERSION}*" | cut -f2 | sed "s#refs/tags/##" | grep -v "\^{}" | sort -V | tail -n 1)
-            [[ -n "$UBUNTU_TAG" ]] || { echo "No Ubuntu tag found for kernel_version=$REQUESTED_VERSION in $RELEASE_LINE"; exit 1; }
-            SOURCE_REF="$UBUNTU_TAG"
-          fi
-
           echo "Source repository: $SOURCE_REPO"
           echo "Source reference: $SOURCE_REF"
-          git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src
+          git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1
 
-          # Detect and descend into kernel source subtree
           cd linux-src
-          if [ -d linux ] && [ -f linux/Makefile ] && [ ! -f Makefile ]; then
-            echo "Detected kernel source in linux/ subdirectory (Debian Salsa layout)"
-            cd linux
-          fi
           echo "KERNEL_SRC_DIR=$(pwd)" >> "$GITHUB_ENV"
           echo "SOURCE_REPO=$SOURCE_REPO" >> "$GITHUB_ENV"
           echo "SOURCE_REF=$SOURCE_REF" >> "$GITHUB_ENV"
           echo "SOURCE_KERNEL_VERSION=$RESOLVED_VERSION" >> "$GITHUB_ENV"
           echo "Source HEAD: $(git log --oneline -1)"
-          echo "Kernel version: $(make kernelversion)"
+          echo "Kernel version: $(make kernelversion 2>/dev/null || echo 'N/A')"
         timeout-minutes: 20
 
       - name: Apply RT patches
@@ -233,7 +360,7 @@ jobs:
             exit 0
           fi
           echo "Applying RT patch..."
-          git apply --check /tmp/rt.patch && git apply /tmp/rt.patch || {
+          git apply --check /tmp/rt.patch 2>/dev/null && git apply /tmp/rt.patch || {
             echo "git apply failed, trying patch -p1..."
             patch -p1 --forward < /tmp/rt.patch || echo "WARNING: RT patch application had issues"
           }
@@ -246,20 +373,26 @@ jobs:
           cd $KERNEL_SRC_DIR
           git clone --depth 1 https://github.com/damentz/liquorix-package.git /tmp/liquorix
           KVER="${SOURCE_KERNEL_VERSION}"
-          PATCH_FILE=$(find /tmp/liquorix -name "*${KVER}*" -name "*.patch" | head -1)
+          PATCH_FILE=$(find /tmp/liquorix -name "*${KVER}*" -name "*.patch" 2>/dev/null | head -1)
           if [ -z "$PATCH_FILE" ]; then
             echo "WARNING: No Liquorix patch found for kernel ${KVER}, building without it"
-            find /tmp/liquorix -name "*.patch" | head -20
+            find /tmp/liquorix -name "*.patch" 2>/dev/null | head -20
             exit 0
           fi
           echo "Applying patch: $PATCH_FILE"
-          git am "$PATCH_FILE" || git am --3way "$PATCH_FILE" || echo "WARNING: Liquorix patch application had issues"
+          git am "$PATCH_FILE" 2>/dev/null || git am --3way "$PATCH_FILE" 2>/dev/null || echo "WARNING: Liquorix patch application had issues"
 
       - name: Configure kernel
         run: |
           cd $KERNEL_SRC_DIR
-          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} defconfig
+          if [ -n "${CROSS_COMPILE:-}" ]; then
+            CC="ccache ${CROSS_COMPILE}gcc"
+          else
+            CC="ccache gcc"
+          fi
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" defconfig
 
+          # Disable debug info for faster build
           ./scripts/config --disable CONFIG_DEBUG_INFO
           ./scripts/config --enable CONFIG_DEBUG_INFO_NONE
           ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
@@ -269,6 +402,7 @@ jobs:
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
           ./scripts/config --disable CONFIG_DEBUG_MISC
 
+          # Cloud flavour: disable unnecessary drivers
           if [[ "${{ inputs.flavour }}" == *"-cloud" ]]; then
             echo "Applying cloud optimizations..."
             ./scripts/config --disable CONFIG_DRM
@@ -315,6 +449,7 @@ jobs:
             ./scripts/config --disable CONFIG_VT_HW_CONSOLE_BINDING
           fi
 
+          # RT flavour: enable real-time preemption
           if [[ "${{ inputs.flavour }}" == "rt-amd64" ]]; then
             echo "Enabling RT preemption..."
             ./scripts/config --enable CONFIG_PREEMPT_RT
@@ -323,9 +458,9 @@ jobs:
             ./scripts/config --disable CONFIG_PREEMPT
           fi
 
-          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} olddefconfig
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" olddefconfig
 
-      - name: Build kernel (make deb-pkg)
+      - name: Build kernel
         run: |
           cd $KERNEL_SRC_DIR
           NPROC=$(nproc)
@@ -333,20 +468,37 @@ jobs:
           echo "ccache stats before build:"
           ccache -s
 
-          make -j${NPROC} \
-            ARCH=$KERNEL_ARCH \
-            ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
-            CC="ccache gcc" \
-            KCFLAGS="-Wno-error=format -Wno-error" \
-            WERROR=0 \
-            LOCALVERSION=-${{ inputs.flavour }} \
-            KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 \
-            deb-pkg
+          # Common make flags
+          MAKE_FLAGS="ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE}"
+          if [ -n "${CROSS_COMPILE:-}" ]; then
+            MAKE_FLAGS+=" CC=\"ccache ${CROSS_COMPILE}gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+          else
+            MAKE_FLAGS+=" CC=\"ccache gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+          fi
+          MAKE_FLAGS+=" LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1"
+
+          if [ "${{ inputs.arch }}" != "amd64" ]; then
+            # Cross-compilation: dpkg-buildpackage does not support cross-compilation natively.
+            echo "Cross-compiling for $KERNEL_ARCH..."
+            make -j$NPROC $MAKE_FLAGS
+            make -j$NPROC $MAKE_FLAGS modules
+
+            if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
+              make -j$NPROC $MAKE_FLAGS dtbs
+            fi
+
+            echo "Cross-compilation build complete."
+          else
+            # Native build: use bindeb-pkg
+            echo "Native build for $KERNEL_ARCH using bindeb-pkg..."
+            make -j$NPROC $MAKE_FLAGS bindeb-pkg
+          fi
 
           echo ""
           echo "ccache stats after build:"
           ccache -s
         timeout-minutes: 300
+
 
       - name: Collect build artifacts
         run: |
@@ -381,15 +533,24 @@ jobs:
 
       - name: Save ccache
         if: always()
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ inputs.arch }}-${{ inputs.distribution }}-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
 
       - name: Upload kernel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kernel-${{ inputs.arch }}-${{ inputs.distribution }}-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}
           path: artifacts/*
           if-no-files-found: error
           compression-level: 0
+
+
+
+
+
+
+
+
+

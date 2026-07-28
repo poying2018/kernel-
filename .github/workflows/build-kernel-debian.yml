@@ -1,0 +1,321 @@
+name: Build Kernel (Debian)
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "1. Target Architecture"
+        required: true
+        type: choice
+        options:
+          - amd64
+          - arm64
+          - armhf
+          - riscv64
+      release_line:
+        description: "2. Debian Release Line"
+        required: true
+        type: choice
+        options:
+          - bookworm
+          - trixie
+      kernel_version:
+        description: "3. Kernel Version (distro-default uses Debian's default for this release)"
+        required: true
+        type: choice
+        options:
+          - distro-default
+          - "6.1"
+          - "6.12"
+          - "6.18"
+      flavour:
+        description: "4. Kernel Flavour"
+        required: true
+        type: choice
+        options:
+          - amd64
+          - amd64-cloud
+          - arm64
+          - arm64-cloud
+          - rt-amd64
+          - liquorix-amd64
+
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 4G
+  CCACHE_COMPRESS: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout workflow repo
+        uses: actions/checkout@v5
+
+      - name: Validate inputs
+        run: |
+          echo "✓ Debian ${{ inputs.release_line }} + kernel ${{ inputs.kernel_version }} (${{ inputs.arch }})"
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
+            ccache fakeroot devscripts debhelper dpkg-dev git wget xz-utils kmod cpio rsync
+
+      - name: Set architecture mapping
+        run: |
+          case "${{ inputs.arch }}" in
+            amd64)   echo "KERNEL_ARCH=x86_64" >> $GITHUB_ENV ;;
+            arm64)   echo "KERNEL_ARCH=arm64" >> $GITHUB_ENV ;;
+            armhf)   echo "KERNEL_ARCH=arm" >> $GITHUB_ENV ;;
+            riscv64) echo "KERNEL_ARCH=riscv" >> $GITHUB_ENV ;;
+          esac
+
+      - name: Install cross-compilation toolchain
+        if: inputs.arch != 'amd64'
+        run: |
+          case "${{ inputs.arch }}" in
+            arm64)
+              sudo apt-get install -y -qq gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+              echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+              ;;
+            armhf)
+              sudo apt-get install -y -qq gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
+              echo "CROSS_COMPILE=arm-linux-gnueabihf-" >> $GITHUB_ENV
+              ;;
+            riscv64)
+              sudo apt-get install -y -qq gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu
+              echo "CROSS_COMPILE=riscv64-linux-gnu-" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Restore ccache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-debian-${{ inputs.arch }}-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-debian-${{ inputs.arch }}-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.flavour }}-
+            ccache-debian-${{ inputs.arch }}-
+
+      - name: Initialize ccache
+        run: |
+          mkdir -p ${{ env.CCACHE_DIR }}
+          ccache --set-config=cache_dir=${{ env.CCACHE_DIR }}
+          ccache --set-config=max_size=${{ env.CCACHE_MAXSIZE }}
+          ccache --set-config=compression=${{ env.CCACHE_COMPRESS }}
+          ccache -z
+
+      - name: Select kernel source
+        run: |
+          set -euo pipefail
+          RELEASE="${{ inputs.release_line }}"
+          KVER="${{ inputs.kernel_version }}"
+
+          # Map release line to default version
+          case "$RELEASE" in
+            bookworm) DEFAULT_VER="6.1" ;;
+            trixie)   DEFAULT_VER="6.12" ;;
+          esac
+
+          if [[ "$KVER" == "distro-default" ]]; then
+            RESOLVED_VERSION="$DEFAULT_VER"
+          else
+            RESOLVED_VERSION="$KVER"
+          fi
+
+          SOURCE_REPO="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+          SOURCE_REF="v${RESOLVED_VERSION}"
+
+          echo "Source: $SOURCE_REPO"
+          echo "Ref: $SOURCE_REF"
+          git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1
+
+          cd linux-src
+          if [ ! -f Makefile ]; then
+            echo "ERROR: Kernel source Makefile not found. Clone may have failed."
+            echo "The tag $SOURCE_REF might not exist yet."
+            exit 1
+          fi
+
+          echo "KERNEL_SRC_DIR=$(pwd)" >> "$GITHUB_ENV"
+          echo "SOURCE_KERNEL_VERSION=$RESOLVED_VERSION" >> "$GITHUB_ENV"
+          echo "Source HEAD: $(git log --oneline -1)"
+          echo "Kernel version: $(make kernelversion 2>/dev/null || echo 'N/A')"
+        timeout-minutes: 20
+
+      - name: Apply RT patches
+        if: inputs.flavour == 'rt-amd64'
+        continue-on-error: true
+        run: |
+          cd $KERNEL_SRC_DIR
+          KVER="${SOURCE_KERNEL_VERSION}"
+          RT_BASE="https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt"
+          for RT_VER in $(seq 20 -1 1); do
+            URL="${RT_BASE}/${KVER}/patch-${KVER}-rt${RT_VER}.patch.xz"
+            if wget -q --spider "${URL}" 2>/dev/null; then
+              wget -q "${URL}" -O /tmp/rt.patch.xz && xz -d /tmp/rt.patch.xz && break
+            fi
+          done
+          if [ -f /tmp/rt.patch ]; then
+            git apply --check /tmp/rt.patch 2>/dev/null && git apply /tmp/rt.patch || \
+              patch -p1 --forward < /tmp/rt.patch || echo "WARNING: RT patch issues"
+          else
+            echo "WARNING: No RT patch found for $KVER"
+          fi
+
+      - name: Apply Liquorix patches
+        if: inputs.flavour == 'liquorix-amd64'
+        continue-on-error: true
+        run: |
+          cd $KERNEL_SRC_DIR
+          git clone --depth 1 https://github.com/damentz/liquorix-package.git /tmp/liquorix
+          PATCH_FILE=$(find /tmp/liquorix -name "*${SOURCE_KERNEL_VERSION}*" -name "*.patch" 2>/dev/null | head -1)
+          if [ -n "$PATCH_FILE" ]; then
+            git am "$PATCH_FILE" 2>/dev/null || git am --3way "$PATCH_FILE" 2>/dev/null || echo "WARNING: Liquorix patch issues"
+          else
+            echo "WARNING: No Liquorix patch for ${SOURCE_KERNEL_VERSION}"
+          fi
+
+      - name: Patch debian/rules if present (remove -Werror)
+        run: |
+          cd $KERNEL_SRC_DIR
+          if [ -f debian/rules ]; then
+            echo "Patching debian/rules to remove -Werror..."
+            sed -i 's/-Werror/-Wno-error/g' debian/rules
+            echo "Patched debian/rules"
+          else
+            echo "No debian/rules found (upstream source, no patch needed)"
+          fi
+
+      - name: Configure kernel
+        run: |
+          cd $KERNEL_SRC_DIR
+          if [ ! -f Makefile ]; then
+            echo "ERROR: Makefile not found in $KERNEL_SRC_DIR!"
+            ls -la
+            exit 1
+          fi
+          if [ -n "${CROSS_COMPILE:-}" ]; then
+            CC="ccache ${CROSS_COMPILE}gcc"
+          else
+            CC="ccache gcc"
+          fi
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" defconfig
+          ./scripts/config --disable CONFIG_DEBUG_INFO
+          ./scripts/config --enable CONFIG_DEBUG_INFO_NONE
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF4
+          ./scripts/config --disable CONFIG_DEBUG_INFO_DWARF5
+          ./scripts/config --disable CONFIG_KGDB
+          ./scripts/config --disable CONFIG_DEBUG_KERNEL
+          ./scripts/config --disable CONFIG_DEBUG_MISC
+          if [[ "${{ inputs.flavour }}" == *"-cloud" ]]; then
+            ./scripts/config --disable CONFIG_DRM
+            ./scripts/config --disable CONFIG_SOUND
+            ./scripts/config --disable CONFIG_INPUT_JOYSTICK
+            ./scripts/config --disable CONFIG_INPUT_TABLET
+            ./scripts/config --disable CONFIG_INPUT_TOUCHSCREEN
+            ./scripts/config --disable CONFIG_INPUT_MISC
+            ./scripts/config --disable CONFIG_VGA_CONSOLE
+            ./scripts/config --disable CONFIG_FB
+            ./scripts/config --disable CONFIG_VT
+            ./scripts/config --disable CONFIG_VT_CONSOLE
+            ./scripts/config --disable CONFIG_WIRELESS
+            ./scripts/config --disable CONFIG_WLAN
+            ./scripts/config --disable CONFIG_BT
+            ./scripts/config --disable CONFIG_CFG80211
+            ./scripts/config --disable CONFIG_MAC80211
+            ./scripts/config --disable CONFIG_MEDIA_SUPPORT
+            ./scripts/config --disable CONFIG_HID
+            ./scripts/config --disable CONFIG_USB_HID
+            ./scripts/config --disable CONFIG_HID_GENERIC
+            ./scripts/config --disable CONFIG_INPUT_KEYBOARD
+            ./scripts/config --disable CONFIG_INPUT_MOUSE
+            ./scripts/config --disable CONFIG_SERIO
+            ./scripts/config --disable CONFIG_VT_HW_CONSOLE_BINDING
+          fi
+          if [[ "${{ inputs.flavour }}" == "rt-amd64" ]]; then
+            ./scripts/config --enable CONFIG_PREEMPT_RT
+            ./scripts/config --disable CONFIG_PREEMPT_NONE
+            ./scripts/config --disable CONFIG_PREEMPT_VOLUNTARY
+            ./scripts/config --disable CONFIG_PREEMPT
+          fi
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC="$CC" olddefconfig
+
+      - name: Build kernel
+        run: |
+          cd $KERNEL_SRC_DIR
+
+          # Common make flags
+          MAKE_FLAGS="ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE}"
+          if [ -n "${CROSS_COMPILE:-}" ]; then
+            MAKE_FLAGS+=" CC=\"ccache ${CROSS_COMPILE}gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+          else
+            MAKE_FLAGS+=" CC=\"ccache gcc\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0"
+          fi
+          MAKE_FLAGS+=" LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1"
+
+          if [ "${{ inputs.arch }}" != "amd64" ]; then
+            # Cross-compilation: dpkg-buildpackage does not support cross-compilation natively.
+            echo "Cross-compiling for $KERNEL_ARCH..."
+            make -j$(nproc) $MAKE_FLAGS
+            make -j$(nproc) $MAKE_FLAGS modules
+
+            if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
+              make -j$(nproc) $MAKE_FLAGS dtbs
+            fi
+
+            echo "Cross-compilation build complete."
+          else
+            # Native build: use bindeb-pkg
+            echo "Native build for $KERNEL_ARCH using bindeb-pkg..."
+            make -j$(nproc) $MAKE_FLAGS bindeb-pkg
+          fi
+        timeout-minutes: 300
+
+
+      - name: Collect artifacts
+        run: |
+          cd $KERNEL_SRC_DIR
+          ARTIFACT_DIR="${{ github.workspace }}/artifacts"
+          mkdir -p $ARTIFACT_DIR
+
+          # Collect .deb packages (native builds only)
+          find .. -maxdepth 1 -name "*.deb" -exec cp {} $ARTIFACT_DIR/ \;
+
+          # Collect kernel image
+          if [ -f arch/$KERNEL_ARCH/boot/bzImage ]; then
+            cp arch/$KERNEL_ARCH/boot/bzImage $ARTIFACT_DIR/
+          fi
+          if [ -f arch/$KERNEL_ARCH/boot/Image ]; then
+            cp arch/$KERNEL_ARCH/boot/Image $ARTIFACT_DIR/
+          fi
+
+          # Collect DTBs (ARM builds)
+          if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
+            mkdir -p $ARTIFACT_DIR/dtbs
+            find arch/$KERNEL_ARCH/boot/dts -name "*.dtb" -exec cp {} $ARTIFACT_DIR/dtbs/ \;
+          fi
+
+          # Save config
+          cp .config $ARTIFACT_DIR/config-${SOURCE_KERNEL_VERSION}-${{ inputs.flavour }}
+
+          # Collect modules
+          make ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} \
+            INSTALL_MOD_PATH=$ARTIFACT_DIR/modules modules_install
+          cd $ARTIFACT_DIR/modules && tar cJf ../modules-${SOURCE_KERNEL_VERSION}-${{ inputs.flavour }}-${{ inputs.arch }}.tar.xz .
+          cd $ARTIFACT_DIR && rm -rf modules
+          ls -lh $ARTIFACT_DIR/
+
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: kernel-debian-${{ inputs.release_line }}-${{ inputs.kernel_version }}-${{ inputs.arch }}-${{ inputs.flavour }}
+          path: artifacts/*
+          if-no-files-found: error
+          compression-level: 0

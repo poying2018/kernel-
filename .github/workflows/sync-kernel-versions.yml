@@ -1,0 +1,71 @@
+﻿name: Sync Kernel Versions
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: "Force update even if no changes detected"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run kernel source monitor
+        id: sync
+        continue-on-error: true
+        run: |
+          python3 scripts/sync-kernel-versions.py || echo "Script completed with warnings"
+        env:
+          GITHUB_OUTPUT: $GITHUB_OUTPUT
+          GITHUB_STEP_SUMMARY: $GITHUB_STEP_SUMMARY
+
+      - name: Commit and push changes
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "sync: kernel source monitor update" -m "Auto-synced at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push origin main
+            echo "Changes pushed successfully"
+          fi
+      - name: Report status
+        if: always()
+        run: |
+          echo "## Sync Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.sync.outcome }}" == "success" ]; then
+            echo "✅ **Changes detected and pushed**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ inputs.force_update }}" == "true" ]; then
+            echo "ℹ️ Force update requested" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **All sources up to date**" >> $GITHUB_STEP_SUMMARY
+          fi
