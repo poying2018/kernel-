@@ -275,7 +275,7 @@ jobs:
 
           if [ "${{ inputs.arch }}" != "amd64" ]; then
             echo "Cross-compiling for $KERNEL_ARCH..."
-            make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1
+            make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1
             make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 modules
             if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
               make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 dtbs
