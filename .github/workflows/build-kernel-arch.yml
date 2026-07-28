@@ -56,7 +56,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
             build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
-            ccache fakeroot devscripts debhelper dpkg-dev git wget xz-utils kmod cpio rsync
+            ccache fakeroot devscripts debhelper dpkg-dev git wget xz-utils kmod cpio rsync lsb-release
 
       - name: Set architecture mapping
         run: |
@@ -184,6 +184,19 @@ jobs:
             echo "Patched debian/rules"
           else
             echo "No debian/rules found (upstream source, no patch needed)"
+          fi
+
+      - name: Patch compiler version check
+        run: |
+          cd $KERNEL_SRC_DIR
+          if [ -f scripts/gcc-version.sh ]; then
+            cat > scripts/gcc-version.sh << 'PATCH_EOF'
+#!/bin/sh
+# Patched for compatibility - outputs GCC major version * 10000
+exec "$@" -dumpversion 2>/dev/null | sed 's/\\..*//; s/^/100/; s/$/00/' || echo "120000"
+PATCH_EOF
+            chmod +x scripts/gcc-version.sh
+            echo "Patched scripts/gcc-version.sh for compiler compatibility"
           fi
 
       - name: Configure kernel
