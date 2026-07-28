@@ -249,30 +249,25 @@ jobs:
       - name: Build kernel
         run: |
           cd $KERNEL_SRC_DIR
-          
+
           # Set compiler based on target architecture
           if [ -n "${CROSS_COMPILE:-}" ]; then
             CC="ccache ${CROSS_COMPILE}gcc"
           else
             CC="ccache gcc"
           fi
-          
-          # Common flags
-          COMMON_FLAGS="ARCH=$KERNEL_ARCH ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} CC=\"$CC\" KCFLAGS=\"-Wno-error=format -Wno-error\" WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1"
-          
+
           if [ "${{ inputs.arch }}" != "amd64" ]; then
-            # Cross-compilation: dpkg-buildpackage does not support cross-compilation natively.
             echo "Cross-compiling for $KERNEL_ARCH..."
-            make -j$(nproc) $COMMON_FLAGS
-            make -j$(nproc) $COMMON_FLAGS modules
+            make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1
+            make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 modules
             if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
-              make -j$(nproc) $COMMON_FLAGS dtbs
+              make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 dtbs
             fi
             echo "Cross-compilation build complete."
           else
-            # Native build: use bindeb-pkg
             echo "Native build for $KERNEL_ARCH using bindeb-pkg..."
-            make -j$(nproc) $COMMON_FLAGS bindeb-pkg
+            make -j$(nproc) ARCH=$KERNEL_ARCH CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 bindeb-pkg
           fi
         timeout-minutes: 300
 
