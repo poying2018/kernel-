@@ -100,7 +100,6 @@ jobs:
 
       - name: Validate input combination
         run: |
-          set -euo pipefail
           ARCH="${{ inputs.arch }}"
           DIST="${{ inputs.distribution }}"
           RELEASE="${{ inputs.release_line }}"
@@ -225,7 +224,6 @@ jobs:
 
       - name: Select official distribution source
         run: |
-          set -euo pipefail
           DISTRIBUTION="${{ inputs.distribution }}"
           RELEASE_LINE="${{ inputs.release_line }}"
           BRANCH="${{ inputs.branch }}"
