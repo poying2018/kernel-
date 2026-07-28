@@ -1,0 +1,150 @@
+{
+  "sources": {
+    "kernel.org/v5.15": {
+      "ref": "v5.15",
+      "sha": "dc7089468610f429e9264420c43d5a3625fd5d8b",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.1": {
+      "ref": "v6.1",
+      "sha": "7614896350aa20764c5eca527262d9eb0a57da63",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.2": {
+      "ref": "v6.2",
+      "sha": "32758e7a720e4752a824c6062e75f107314e5598",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.5": {
+      "ref": "v6.5",
+      "sha": "52e12027d50affbf60c6c9c64db8017391b0c22e",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.6": {
+      "ref": "v6.6",
+      "sha": "5260836abb7056beed3f3f0d0e4262c11f36f0d0",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.8": {
+      "ref": "v6.8",
+      "sha": "90d1f30371ae3337beb01666b226320728d35c70",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.12": {
+      "ref": "v6.12",
+      "sha": "06090c9b622a7e1f797e775db4c035e0d779b76e",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v6.18": {
+      "ref": "v6.18",
+      "sha": "f7b88edb52c8dd01b7e576390d658ae6eef0e134",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v7.0": {
+      "ref": "v7.0",
+      "sha": "3131ff5a117498bb4b9db3a238bb311cbf8383ce",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "kernel.org/v7.1": {
+      "ref": "v7.1",
+      "sha": "b3f94b2b3f3e51ab880a51fc6510e1dafba654ed",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "ubuntu/jammy/Ubuntu-5.15.0-168.178": {
+      "ref": "Ubuntu-5.15.0-168.178",
+      "sha": "57bc51af478eed431fe2428447c4554e1e118482",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1": {
+      "ref": "Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1",
+      "sha": "d27f468b26cdf7e32bf1f847f296de1847a80a5c",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1": {
+      "ref": "Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1",
+      "sha": "6c2999c545b8d86b8d654c6c3b28a3e1070a5ac7",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1": {
+      "ref": "Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1",
+      "sha": "281e8908bd2dd492654c9c49bb6c5e00805a71cf",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/noble/Ubuntu-6.8.0-57.59": {
+      "ref": "Ubuntu-6.8.0-57.59",
+      "sha": "dce1781c843d8c2bcada4867896a8a9188ac3415",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble"
+    },
+    "ubuntu/oracular/Ubuntu-6.8.0-24.24": {
+      "ref": "Ubuntu-6.8.0-24.24",
+      "sha": "f4d5b6e79297787f23025e72bbbd572f8e270f84",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/oracular"
+    },
+    "ubuntu/plucky/Ubuntu-6.8.0-26.26": {
+      "ref": "Ubuntu-6.8.0-26.26",
+      "sha": "c08611ac463c21ab4b4faabf2edb05b605a99159",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/plucky"
+    },
+    "arch/rolling/v6.3.2": {
+      "ref": "v6.3.2",
+      "sha": "2388a66189994448256c46c49cb84f84d0581db5",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git",
+      "pkgver": "6.3.2.arch1"
+    },
+    "debian/bookworm/v6.1": {
+      "ref": "v6.1",
+      "sha": "7614896350aa20764c5eca527262d9eb0a57da63",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    },
+    "debian/trixie/v6.12": {
+      "ref": "v6.12",
+      "sha": "06090c9b622a7e1f797e775db4c035e0d779b76e",
+      "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+    }
+  },
+  "eol_report": {
+    "7.1": {
+      "version": "7.1.5",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "stable"
+    },
+    "6.18": {
+      "version": "6.18.40",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "longterm"
+    },
+    "6.12": {
+      "version": "6.12.98",
+      "iseol": false,
+      "date": "2026-07-25",
+      "moniker": "longterm"
+    },
+    "6.6": {
+      "version": "6.6.145",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "longterm"
+    },
+    "6.1": {
+      "version": "6.1.178",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "longterm"
+    },
+    "5.15": {
+      "version": "5.15.212",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "longterm"
+    },
+    "5.10": {
+      "version": "5.10.261",
+      "iseol": false,
+      "date": "2026-07-24",
+      "moniker": "longterm"
+    }
+  },
+  "last_sync": "2026-07-28T18:06:49.350858+00:00"
+}
