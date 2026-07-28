@@ -112,7 +112,32 @@ jobs:
           echo "Source: $SOURCE_REPO"
           echo "Ref: $SOURCE_REF"
 
-          git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" linux-src 2>&1
+          # Try multiple sources for reliability
+          CLONE_SUCCESS=false
+          for attempt in 1 2 3; do
+            echo "Clone attempt ..."
+            if git clone --depth 1 --branch "" "" linux-src 2>&1; then
+              if [ -f linux-src/Makefile ]; then
+                CLONE_SUCCESS=true
+                break
+              fi
+            fi
+            if [ "" -ge 2 ]; then
+              echo "Trying GitHub mirror..."
+              if git clone --depth 1 --branch "" "https://github.com/torvalds/linux.git" linux-src 2>&1; then
+                if [ -f linux-src/Makefile ]; then
+                  CLONE_SUCCESS=true
+                  break
+                fi
+              fi
+            fi
+            sleep 5
+          done
+
+          if [ "" = false ]; then
+            echo "ERROR: Failed to clone kernel source after multiple attempts."
+            exit 1
+          fi
 
           cd linux-src
           if [ ! -f Makefile ]; then
