@@ -241,10 +241,6 @@ jobs:
       - name: Configure kernel
         run: |
           cd $KERNEL_SRC_DIR
-          if [ ! -f Makefile ]; then
-            echo "ERROR: Makefile not found in kernel source!"
-            exit 1
-          fi
           if [ -n "${CROSS_COMPILE:-}" ]; then
             CC="ccache ${CROSS_COMPILE}gcc"
           else
