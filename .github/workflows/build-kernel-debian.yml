@@ -132,7 +132,7 @@ jobs:
           echo "Source: $SOURCE_REPO"
           echo "Ref: $SOURCE_REF"
           # Download kernel source as tarball (more reliable than git clone)
-          KERNEL_VER="${SOURCE_KERNEL_VERSION}"
+          KERNEL_VER="${KVER}"
           MAJOR_VER="${KERNEL_VER%%.*}"
           TARBALL_DIR=$(mktemp -d)
           DOWNLOAD_SUCCESS=false
