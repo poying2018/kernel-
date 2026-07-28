@@ -208,6 +208,9 @@ jobs:
           fi
 
           cd linux-src
+          echo "KERNEL_SRC_DIR=$(pwd)" >> "$GITHUB_ENV"
+          echo "SOURCE_KERNEL_VERSION=$KVER" >> "$GITHUB_ENV"
+          echo "Source HEAD: $(git log --oneline 2>/dev/null | head -1 || echo 'N/A')"
           if [ ! -f Makefile ]; then
             echo "ERROR: Kernel source Makefile not found. Clone may have failed."
             echo "The tag $SOURCE_REF might not exist yet."
