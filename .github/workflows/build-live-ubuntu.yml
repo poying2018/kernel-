@@ -200,6 +200,13 @@ jobs:
           # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
+          # Create dummy ubuntu-keyring package to satisfy dependencies
+          # (live-build removes preferences.d files, so Pin-Priority won't work)
+          mkdir -p /tmp/dummy-keyring/DEBIAN
+          printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
+          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
           # Diagnostic: dump package lists and check for garbage
           echo "=== Package list files ==="
           ls -la config/package-lists/
@@ -211,6 +218,16 @@ jobs:
           sudo chroot chroot apt-cache pkgnames 2>/dev/null | wc -l || true
           echo "=== Any packages.chroot dir? ==="
           ls -la config/packages.chroot/ 2>/dev/null || echo "No packages.chroot dir"
+          echo "=== Hex dump of package list files (looking for hidden chars) ==="
+          xxd config/package-lists/*.list.chroot 2>/dev/null | head -30 || true
+          echo "=== Search chroot for garbage strings ==="
+          sudo grep -r "COMPUTER" chroot/ 2>/dev/null | head -5 || true
+          sudo grep -r "Corp\." chroot/ 2>/dev/null | head -5 || true
+          sudo grep -r "VALLEYVIEW" chroot/ 2>/dev/null | head -5 || true
+          echo "=== chroot /var/cache/apt/archives ==="
+          sudo ls -la chroot/var/cache/apt/archives/ 2>/dev/null | head -5 || true
+          echo "=== chroot /var/lib/apt/lists ==="
+          sudo ls -la chroot/var/lib/apt/lists/ 2>/dev/null | head -10 || true
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)

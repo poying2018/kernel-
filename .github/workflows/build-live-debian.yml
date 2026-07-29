@@ -192,6 +192,16 @@ jobs:
           # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
+          # Patch live-build chroot_linux-image to use correct Contents file URL
+          # (newer Debian uses dists/bookworm/main/Contents-amd64.gz, not dists/bookworm/Contents-amd64.gz)
+          if [ -f /usr/share/live/build/chroot_linux-image ]; then
+            echo "=== Patching live-build Contents URL ==="
+            grep -n 'Contents' /usr/share/live/build/chroot_linux-image | head -5 || true
+            sudo sed -i 's|dists/\${LB_DISTRIBUTION}/Contents|dists/\${LB_DISTRIBUTION}/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
+            sudo sed -i 's|dists/\$LB_DISTRIBUTION/Contents|dists/\$LB_DISTRIBUTION/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
+            sudo sed -i 's|dists/\${LB_PARENT_DISTRIBUTION}/Contents|dists/\${LB_PARENT_DISTRIBUTION}/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
+            grep -n 'Contents' /usr/share/live/build/chroot_linux-image | head -5 || true
+          fi
           # Create dummy ubuntu-keyring package to satisfy dependencies
           # (live-build removes preferences.d files, so Pin-Priority won't work)
           mkdir -p /tmp/dummy-keyring/DEBIAN
