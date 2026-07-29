@@ -1,8 +1,10 @@
 # Linux Kernel GitHub Action
 
-自动编译 Debian、Ubuntu 和 Arch Linux 目标内核的 GitHub Actions 工作流。
+自动编译 Debian、Ubuntu 和 Arch Linux 目标内核的 GitHub Actions 工作流。同时支持构建带桌面环境的 Live ISO 可安装镜像。
 
 ## 工作流结构
+
+### 内核构建工作流
 
 每个发行版有独立的工作流文件，确保版本选择精准匹配：
 
@@ -11,6 +13,23 @@
 | Build Kernel (Debian) | `.github/workflows/build-kernel-debian.yml` | Debian bookworm / trixie |
 | Build Kernel (Ubuntu) | `.github/workflows/build-kernel-ubuntu.yml` | Ubuntu jammy / noble / oracular / plucky |
 | Build Kernel (Arch) | `.github/workflows/build-kernel-arch.yml` | Arch Linux rolling |
+
+### Live ISO 构建工作流
+
+构建带 XFCE 桌面环境和 Calamares 安装器的可启动 Live ISO 镜像：
+
+| 工作流 | 文件 | 说明 |
+|--------|------|------|
+| Build Live ISO (Debian) | `.github/workflows/build-live-debian.yml` | Debian bookworm / trixie, amd64 |
+| Build Live ISO (Ubuntu) | `.github/workflows/build-live-ubuntu.yml` | Ubuntu jammy / noble / oracular / plucky, amd64 |
+| Build Live ISO (Arch) | `.github/workflows/build-live-arch.yml` | Arch Linux rolling, amd64 |
+
+**Live ISO 特性：**
+- XFCE 桌面环境
+- Calamares 图形安装器（U 盘启动后一键安装到硬盘）
+- 自定义内核（使用与内核构建工作流相同的源码编译）
+- 基础工具集（vim, git, curl, network-manager 等）
+- 固件包（支持常见无线网卡和显卡）
 
 ## 使用方法
 
@@ -248,8 +267,10 @@ sudo cp .config /boot/config-custom-$KVERSION
 所有工作流都支持：
 - `amd64` — x86_64
 - `arm64` — ARM 64-bit
-- `armhf` — ARM 32-bit hard-float（Debian/Ubuntu）
-- `riscv64` — RISC-V 64-bit（Debian/Ubuntu）
+- `armhf` — ARM 32-bit hard-float（Debian）
+- `riscv64` — RISC-V 64-bit（Debian）
+
+> **注意**：Live ISO 工作流目前仅支持 amd64 架构。
 
 ### 2. 发行版发布线（Release Line）
 
