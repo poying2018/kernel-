@@ -1,0 +1,21 @@
+---
+componentName:  arch
+
+welcomeStyleCalamares:   false
+
+strings:
+    productName:         Arch Linux Live
+    version:             1.0
+    shortVersion:        1.0
+    versionedName:       Arch Linux Live
+    shortVersionedName:   Arch Linux Live
+    bootloaderEntryName:  Arch Linux Live
+
+images:
+    productBanner:       banner.png
+    productIcon:        icon.png
+
+style:
+    sidebarBackground:   "#1a1a2e"
+    sidebarText:         "#ffffff"
+    sidebarSelect:       "#e94560"
