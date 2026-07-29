@@ -287,10 +287,7 @@ jobs:
             ./scripts/config --disable CONFIG_PREEMPT
           fi
           if [[ "${{ inputs.flavour }}" == "zen-amd64" ]]; then
-            ./scripts/config --enable CONFIG_ZEN_INTERACTIVE
-            ./scripts/config --enable 2>/dev/null
-            ./scripts/config --enable ||
-            ./scripts/config --enable true
+            ./scripts/config --enable CONFIG_ZEN_INTERACTIVE 2>/dev/null || true
             ./scripts/config --set-val CONFIG_HZ 1000 2>/dev/null || true
             ./scripts/config --set-val CONFIG_HZ_PERIODIC 0 2>/dev/null || true
           fi

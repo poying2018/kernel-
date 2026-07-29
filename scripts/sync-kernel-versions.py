@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 sync-kernel-versions.py - Comprehensive kernel source monitoring.
 
