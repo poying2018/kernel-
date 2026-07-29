@@ -16,6 +16,7 @@ on:
         type: choice
         options:
           - distro-default
+          - "6.6"
           - "6.12"
           - "6.18"
           - "7.0"
