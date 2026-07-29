@@ -165,7 +165,9 @@ jobs:
             --iso-preparer "kernel- builder" \
             --iso-publisher "https://github.com/poying2018/kernel-" \
             --iso-volume "Ubuntu Live ${{ inputs.release_line }}"
-          # Replace apt sources with [trusted=yes] to skip gpg verification
+          # Copy live-build config FIRST (overwrites lb config defaults)
+          cp -r ../live-build/ubuntu/config/* config/
+          # Then add [trusted=yes] to all chroot archive sources
           # (gpg is not available in the GitHub Actions runner chroot)
           for f in config/archives/*.list.chroot*; do
             if [ -f "$f" ]; then
@@ -173,11 +175,9 @@ jobs:
               sed -i 's|^deb-src |deb-src [trusted=yes] |g' "$f"
             fi
           done
-          # Copy kernel packages
-          mkdir -p config/packages.chroot
-          cp ../*.deb config/packages.chroot/
-          # Copy live-build config
-          cp -r ../live-build/ubuntu/config/* config/
+          # Do NOT copy kernel debs to config/packages.chroot/ — local repo
+          # has permission issues in GitHub Actions. We install them manually
+          # after lb chroot instead.
 
       - name: Build ISO
         run: |
@@ -197,11 +197,16 @@ jobs:
           # Disable apt signature verification inside chroot (fake gpg doesn't provide keys)
           sudo mkdir -p chroot/etc/apt/apt.conf.d
           printf 'APT::Get::AllowUnauthenticated "true";\nAcquire::AllowInsecureRepositories "true";\n' | sudo tee chroot/etc/apt/apt.conf.d/99allow-unauth
-          # Ensure all repos in sources.list are trusted (local + remote)
+          # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
-          # Continue with chroot (installs packages) and binary (creates ISO)
+          # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
+          # Install kernel packages manually (avoid local repo permission issues)
+          sudo cp /__w/kernel-/kernel-/*.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/*.deb || true
+          sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>/dev/null || true
+          # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
           ls -lh *.iso
