@@ -1,4 +1,3 @@
----
 #################
 # archiso profile for Arch Linux Live ISO with XFCE + Calamares
 #################
