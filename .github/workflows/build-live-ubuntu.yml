@@ -192,6 +192,9 @@ jobs:
           sudo touch chroot/root/local-package-keyring.gpg
           sudo touch chroot/root/local-package-keyring.pub
           sudo touch chroot/root/local-package-keyring.sec
+          # Trust local package repository (fake gpg can't produce valid signatures)
+          sudo sed -i 's|^deb \[trusted=yes\] file:/root/packages|deb [trusted=yes] file:/root/packages|' chroot/etc/apt/sources.list
+          sudo sed -i 's|^deb file:/root/packages|deb [trusted=yes] file:/root/packages|' chroot/etc/apt/sources.list
           # Continue with chroot (installs packages) and binary (creates ISO)
           sudo lb chroot
           sudo lb binary
