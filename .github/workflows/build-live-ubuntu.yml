@@ -105,7 +105,16 @@ jobs:
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
           ./scripts/config --disable CONFIG_DEBUG_MISC
           ./scripts/config --disable CONFIG_WERROR
+          # Create wrapper to skip debhelper-compat dependency check
+          sudo mv /usr/bin/dpkg-buildpackage /usr/bin/dpkg-buildpackage.real
+          cat > /tmp/dpkg-buildpackage << 'WRAPPER'
+          #!/bin/bash
+          /usr/bin/dpkg-buildpackage.real -d "$@"
+          WRAPPER
+          chmod +x /tmp/dpkg-buildpackage
+          sudo mv /tmp/dpkg-buildpackage /usr/bin/dpkg-buildpackage
           make -j$(nproc) bindeb-pkg LOCALVERSION=-live KDEB_PKGVERSION="${KVER}-1"
+          sudo mv /usr/bin/dpkg-buildpackage.real /usr/bin/dpkg-buildpackage
           echo "Kernel packages built:"
           ls -lh ../*.deb
 
@@ -136,13 +145,11 @@ jobs:
             --firmware-chroot true \
             --firmware-binary true \
             --security true \
-            --updates true \
             --interactive disabled \
             --win32-loader false \
             --initsystem systemd \
             --checksums md5 \
             --gzip-options "--best" \
-            --image-type iso-hybrid \
             --bootloader syslinux,grub-efi \
             --iso-application "Ubuntu Live" \
             --iso-preparer "kernel- builder" \
