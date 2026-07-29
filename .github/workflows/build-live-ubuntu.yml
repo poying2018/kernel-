@@ -163,6 +163,14 @@ jobs:
             --iso-preparer "kernel- builder" \
             --iso-publisher "https://github.com/poying2018/kernel-" \
             --iso-volume "Ubuntu Live ${{ inputs.release_line }}"
+          # Replace apt sources with [trusted=yes] to skip gpg verification
+          # (gpg is not available in the GitHub Actions runner chroot)
+          for f in config/archives/*.list.chroot*; do
+            if [ -f "$f" ]; then
+              sed -i 's|^deb |deb [trusted=yes] |g' "$f"
+              sed -i 's|^deb-src |deb-src [trusted=yes] |g' "$f"
+            fi
+          done
           # Copy kernel packages
           mkdir -p config/packages.chroot
           cp ../*.deb config/packages.chroot/
