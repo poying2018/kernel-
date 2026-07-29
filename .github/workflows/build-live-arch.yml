@@ -62,9 +62,16 @@ jobs:
       - name: Copy archiso profile
         run: |
           cp -r live-build/arch /archlive
-          # Copy bootloader config from archiso installation
-          cp -r /usr/share/archiso/syslinux /archlive/ 2>/dev/null || echo "No syslinux config"
-          cp -r /usr/share/archiso/grub /archlive/ 2>/dev/null || echo "No grub config"
+          # Find and copy bootloader config from archiso installation
+          echo "=== Looking for archiso bootloader configs ==="
+          find /usr/share/archiso -maxdepth 2 -type d 2>/dev/null
+          find /usr -path "*/archiso/*" -name "syslinux" -type d 2>/dev/null
+          find /usr -path "*/archiso/*" -name "grub" -type d 2>/dev/null
+          # Copy if found
+          SYSLINUX_DIR=$(find /usr -path "*/archiso/*" -name "syslinux" -type d 2>/dev/null | head -1)
+          GRUB_DIR=$(find /usr -path "*/archiso/*" -name "grub" -type d 2>/dev/null | head -1)
+          if [ -n "$SYSLINUX_DIR" ]; then cp -r "$SYSLINUX_DIR" /archlive/syslinux; fi
+          if [ -n "$GRUB_DIR" ]; then cp -r "$GRUB_DIR" /archlive/grub; fi
           ls -la /archlive/
           # Update kernel package if custom version requested
           if [ "${{ env.KERNEL_VERSION }}" != "$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)" ]; then
