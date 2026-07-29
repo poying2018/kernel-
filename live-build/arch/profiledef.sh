@@ -2,7 +2,7 @@
 # archiso profile for Arch Linux Live ISO with XFCE + Calamares
 #################
 
-bootmodes=('bios.syslinux.x86_64')
+bootmodes=('bios.syslinux' 'uefi-x64.grub.esp')
 iso_name="arch-live"
 iso_label="ARCH_LIVE_$(date +%Y%m)"
 iso_publisher="kernel- builder <https://github.com/poying2018/kernel->"

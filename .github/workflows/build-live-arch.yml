@@ -37,6 +37,7 @@ jobs:
             curl \
             squashfs-tools \
             xorriso \
+            syslinux \
             grub \
             efibootmgr
 
