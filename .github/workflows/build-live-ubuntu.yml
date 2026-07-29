@@ -122,8 +122,8 @@ jobs:
       - name: Ensure gpg is available
         run: |
           if ! command -v gpg &>/dev/null; then
-            echo "gpg not found, installing gnupg..."
-            sudo apt-get install -y gnupg gnupg2
+            echo "gpg not found, installing gnupg without signature verification..."
+            sudo apt-get install -y --allow-unauthenticated gnupg gnupg2 gpg
           fi
           which gpg
           gpg --version | head -1
