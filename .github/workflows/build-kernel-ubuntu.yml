@@ -10,7 +10,6 @@ on:
         options:
           - amd64
           - arm64
-          - armhf
           - riscv64
       release_line:
         description: "2. Ubuntu Release Line"
