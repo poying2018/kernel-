@@ -112,6 +112,15 @@ jobs:
           echo "Kernel packages built:"
           ls -lh ../*.deb
 
+      - name: Ensure gpg is available
+        run: |
+          if ! command -v gpg &>/dev/null; then
+            echo "gpg not found, installing gnupg..."
+            sudo apt-get install -y gnupg gnupg2
+          fi
+          which gpg
+          gpg --version | head -1
+
       - name: Setup live-build
         run: |
           mkdir -p live-build
