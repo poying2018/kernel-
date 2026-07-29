@@ -49,6 +49,11 @@ jobs:
           echo "KERNEL_VERSION=$KVER" >> $GITHUB_ENV
           echo "Building with kernel version: $KVER"
 
+      - name: Debug archiso version
+        run: |
+          pacman -Qi archiso | grep Version
+          grep -A5 'bootmodes' /usr/bin/mkarchiso | head -20
+
       - name: Copy archiso profile
         run: |
           cp -r live-build/arch /archlive
