@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 360
 
     container:
-      image: archlinux/archiso:latest
+      image: archlinux:latest
       options: --privileged
 
     steps:
