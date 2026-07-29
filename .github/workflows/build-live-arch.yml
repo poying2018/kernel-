@@ -62,6 +62,10 @@ jobs:
       - name: Copy archiso profile
         run: |
           cp -r live-build/arch /archlive
+          # Copy bootloader config from archiso installation
+          cp -r /usr/share/archiso/syslinux /archlive/ 2>/dev/null || echo "No syslinux config"
+          cp -r /usr/share/archiso/grub /archlive/ 2>/dev/null || echo "No grub config"
+          ls -la /archlive/
           # Update kernel package if custom version requested
           if [ "${{ env.KERNEL_VERSION }}" != "$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)" ]; then
             # Replace linux package with specific version from AUR or custom build

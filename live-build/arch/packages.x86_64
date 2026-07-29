@@ -24,6 +24,11 @@ parole
 engrampa
 gparted
 
+# Boot loader
+syslinux
+grub
+efibootmgr
+
 # Installer
 calamares
 
