@@ -99,8 +99,8 @@ jobs:
           ./scripts/config --disable CONFIG_DEBUG_KERNEL
           ./scripts/config --disable CONFIG_DEBUG_MISC
           ./scripts/config --disable CONFIG_WERROR
-          # Remove -Werror from tools/build to avoid objtool failures with newer GCC
-          sed -i 's/-Werror//' tools/build/Makefile.build
+          # Remove -Werror from ALL build files to avoid objtool failures with newer GCC
+          find tools -type f \( -name 'Makefile' -o -name '*.mk' -o -name '*.build' \) -exec grep -l '\-Werror' {} \; | xargs sed -i 's/-Werror//g'
           # Create wrapper to skip debhelper-compat dependency check
           sudo mv /usr/bin/dpkg-buildpackage /usr/bin/dpkg-buildpackage.real
           cat > /tmp/dpkg-buildpackage << 'WRAPPER'
