@@ -200,6 +200,17 @@ jobs:
           # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
+          # Diagnostic: dump package lists and check for garbage
+          echo "=== Package list files ==="
+          ls -la config/package-lists/
+          echo "=== Package list contents ==="
+          cat config/package-lists/*.list.chroot 2>/dev/null || true
+          echo "=== chroot apt sources ==="
+          sudo cat chroot/etc/apt/sources.list
+          echo "=== chroot apt cache (package count) ==="
+          sudo chroot chroot apt-cache pkgnames 2>/dev/null | wc -l || true
+          echo "=== Any packages.chroot dir? ==="
+          ls -la config/packages.chroot/ 2>/dev/null || echo "No packages.chroot dir"
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
