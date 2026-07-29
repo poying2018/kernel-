@@ -89,18 +89,20 @@ jobs:
 
       - name: Copy ISO to workspace
         run: |
-          mkdir -p ${{ github.workspace }}/output
+          # Use the host workspace path that upload-artifact expects
+          OUTPUT_DIR="/__w/kernel-/kernel-/output"
+          mkdir -p "$OUTPUT_DIR"
           echo "=== ISO files in container ==="
           ls -lh /tmp/archiso-out/*.iso
           echo "=== Copying to workspace ==="
-          cp -v /tmp/archiso-out/*.iso ${{ github.workspace }}/output/
+          cp -v /tmp/archiso-out/*.iso "$OUTPUT_DIR/"
           echo "=== Files in workspace output ==="
-          ls -lh ${{ github.workspace }}/output/
+          ls -lh "$OUTPUT_DIR"/
 
       - name: Upload ISO
         uses: actions/upload-artifact@v5
         with:
           name: live-arch-rolling-${{ env.KERNEL_VERSION }}-amd64
-          path: ${{ github.workspace }}/output/*.iso
+          path: /__w/kernel-/kernel-/output/*.iso
           if-no-files-found: error
           compression-level: 0
