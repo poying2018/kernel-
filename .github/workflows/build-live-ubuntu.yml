@@ -188,8 +188,9 @@ jobs:
           echo 'exit 0' >> /tmp/fake-gpg
           chmod +x /tmp/fake-gpg
           sudo cp /tmp/fake-gpg chroot/usr/bin/gpg
-          # Create dummy keyring so live-build's cp doesn't fail
+          # Create dummy keyrings so live-build's cp/rm don't fail
           sudo touch chroot/root/local-package-keyring.gpg
+          sudo touch chroot/root/local-package-keyring.pub
           # Continue with chroot (installs packages) and binary (creates ISO)
           sudo lb chroot
           sudo lb binary
