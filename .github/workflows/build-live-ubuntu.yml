@@ -152,8 +152,6 @@ jobs:
             --apt-recommends false \
             --bootappend-live "boot=live components hostname=ubuntu-live username=live" \
             --memtest none \
-            --firmware-chroot true \
-            --firmware-binary true \
             --security true \
             --interactive disabled \
             --win32-loader false \
@@ -226,6 +224,25 @@ jobs:
             done
             echo "=== Cleaning packages.chroot to prevent garbage package names ==="
             sudo rm -rf config/packages.chroot/*
+          fi
+          # Fix wget to correct Contents-amd64.gz URL (in case lb_chroot_linux-image runs)
+          if [ -f /usr/bin/wget ]; then
+            sudo mv /usr/bin/wget /usr/bin/wget.real
+            cat > /tmp/wget-wrapper << 'WGETEOF'
+          #!/bin/bash
+          args=()
+          for arg in "$@"; do
+            case "$arg" in
+              */dists/*/Contents-amd64.gz)
+                arg=$(echo "$arg" | sed 's#/dists/\([^/]*\)/Contents-amd64.gz#/dists/\1/main/Contents-amd64.gz#')
+                ;;
+            esac
+            args+=("$arg")
+          done
+          exec /usr/bin/wget.real "${args[@]}"
+          WGETEOF
+            chmod +x /tmp/wget-wrapper
+            sudo mv /tmp/wget-wrapper /usr/bin/wget
           fi
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
