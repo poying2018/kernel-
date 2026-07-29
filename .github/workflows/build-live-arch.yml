@@ -90,7 +90,12 @@ jobs:
       - name: Copy ISO to workspace
         run: |
           mkdir -p ${{ github.workspace }}/output
-          cp /tmp/archiso-out/*.iso ${{ github.workspace }}/output/
+          echo "=== ISO files in container ==="
+          ls -lh /tmp/archiso-out/*.iso
+          echo "=== Copying to workspace ==="
+          cp -v /tmp/archiso-out/*.iso ${{ github.workspace }}/output/
+          echo "=== Files in workspace output ==="
+          ls -lh ${{ github.workspace }}/output/
 
       - name: Upload ISO
         uses: actions/upload-artifact@v5
