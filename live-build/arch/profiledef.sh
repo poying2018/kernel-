@@ -1,3 +1,4 @@
+---
 #################
 # archiso profile for Arch Linux Live ISO with XFCE + Calamares
 #################
@@ -9,7 +10,7 @@ iso_application="Arch Linux Live CD"
 iso_version="$(date +%Y.%m.%d)"
 install_dir="arch"
 
-bootmodes=('bios.syslinux.i386' 'bios.syslinux.x86_64' 'uefi-ia32.systemd-boot' 'uefi-x64.systemd-boot')
+bootmodes=('bios.syslinux.i386' 'bios.syslinux.x86_64' 'uefi-ia3ia32.systemd-boot' 'uefi-x64.systemd-boot')
 arch="x86_64"
 pacman_conf="etc/pacman.conf"
 airootfs_image_type="squashfs"
