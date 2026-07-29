@@ -8,9 +8,6 @@ iso_publisher="kernel- builder <https://github.com/poying2018/kernel->"
 iso_application="Arch Linux Live CD"
 iso_version="$(date +%Y.%m.%d)"
 install_dir="arch"
-
-bootmodes=('bios.syslinux.i386' 'bios.syslinux.x86_64' 'uefi-ia3ia32.systemd-boot' 'uefi-x64.systemd-boot')
-arch="x86_64"
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'xz' '-Xbcj' 'x86' '-b' '1M' '-Xdict-size' '1M')
