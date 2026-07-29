@@ -192,10 +192,13 @@ jobs:
           # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
-          # Pin ubuntu-keyring to never be installed (not available in Debian repos)
-          printf 'Package: ubuntu-keyring\nPin: release *\nPin-Priority: -1\n' | sudo tee chroot/etc/apt/preferences.d/no-ubuntu-keyring
-          # Purge it if present from bootstrap
-          sudo chroot chroot dpkg --purge --force-depends ubuntu-keyring 2>/dev/null || true
+          # Create dummy ubuntu-keyring package to satisfy dependencies
+          # (live-build removes preferences.d files, so Pin-Priority won't work)
+          mkdir -p /tmp/dummy-keyring/DEBIAN
+          printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
+          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
