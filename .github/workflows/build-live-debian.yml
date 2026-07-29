@@ -41,7 +41,7 @@ jobs:
           sudo apt-get install -y -qq \
             live-build \
             build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
-            ccache git wget xz-utils kmod cpio rsync
+            ccache git wget xz-utils kmod cpio rsync debhelper fakeroot devscripts
 
       - name: Set kernel version
         run: |
