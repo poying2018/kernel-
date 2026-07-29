@@ -194,13 +194,11 @@ jobs:
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
           # Patch live-build chroot_linux-image to use correct Contents file URL
           # (newer Debian uses dists/bookworm/main/Contents-amd64.gz, not dists/bookworm/Contents-amd64.gz)
+          # Strategy: just make lb_chroot_linux-image a no-op since we install kernel manually anyway
           if [ -f /usr/share/live/build/chroot_linux-image ]; then
-            echo "=== Patching live-build Contents URL ==="
-            grep -n 'Contents' /usr/share/live/build/chroot_linux-image | head -5 || true
-            sudo sed -i 's|dists/\${LB_DISTRIBUTION}/Contents|dists/\${LB_DISTRIBUTION}/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
-            sudo sed -i 's|dists/\$LB_DISTRIBUTION/Contents|dists/\$LB_DISTRIBUTION/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
-            sudo sed -i 's|dists/\${LB_PARENT_DISTRIBUTION}/Contents|dists/\${LB_PARENT_DISTRIBUTION}/main/Contents|g' /usr/share/live/build/chroot_linux-image 2>/dev/null || true
-            grep -n 'Contents' /usr/share/live/build/chroot_linux-image | head -5 || true
+            echo "=== Disabling lb_chroot_linux-image (kernel installed manually) ==="
+            sudo cp /usr/share/live/build/chroot_linux-image /usr/share/live/build/chroot_linux-image.bak
+            echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot_linux-image (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
           fi
           # Create dummy ubuntu-keyring package to satisfy dependencies
           # (live-build removes preferences.d files, so Pin-Priority won't work)

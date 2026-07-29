@@ -207,27 +207,12 @@ jobs:
           dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
           sudo cp /tmp/dummy-keyring.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
-          # Diagnostic: dump package lists and check for garbage
-          echo "=== Package list files ==="
-          ls -la config/package-lists/
-          echo "=== Package list contents ==="
-          cat config/package-lists/*.list.chroot 2>/dev/null || true
-          echo "=== chroot apt sources ==="
-          sudo cat chroot/etc/apt/sources.list
-          echo "=== chroot apt cache (package count) ==="
-          sudo chroot chroot apt-cache pkgnames 2>/dev/null | wc -l || true
-          echo "=== Any packages.chroot dir? ==="
-          ls -la config/packages.chroot/ 2>/dev/null || echo "No packages.chroot dir"
-          echo "=== Hex dump of package list files (looking for hidden chars) ==="
-          xxd config/package-lists/*.list.chroot 2>/dev/null | head -30 || true
-          echo "=== Search chroot for garbage strings ==="
-          sudo grep -r "COMPUTER" chroot/ 2>/dev/null | head -5 || true
-          sudo grep -r "Corp\." chroot/ 2>/dev/null | head -5 || true
-          sudo grep -r "VALLEYVIEW" chroot/ 2>/dev/null | head -5 || true
-          echo "=== chroot /var/cache/apt/archives ==="
-          sudo ls -la chroot/var/cache/apt/archives/ 2>/dev/null | head -5 || true
-          echo "=== chroot /var/lib/apt/lists ==="
-          sudo ls -la chroot/var/lib/apt/lists/ 2>/dev/null | head -10 || true
+          # Disable lb_chroot-linuximage since we install kernel manually
+          if [ -f /usr/share/live/build/chroot_linux-image ]; then
+            echo "=== Disabling lb_chroot-linuximage (kernel installed manually) ==="
+            sudo cp /usr/share/live/build/chroot_linux-image /usr/share/live/build/chroot_linux-image.bak
+            echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot-linuximage (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
+          fi
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
