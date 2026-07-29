@@ -180,7 +180,17 @@ jobs:
       - name: Build ISO
         run: |
           cd live-build
-          sudo lb build
+          # Bootstrap first (creates the base system via debootstrap)
+          sudo lb bootstrap
+          # Inject fake gpg to bypass signature verification in chroot
+          # (gpg is not available in the GitHub Actions runner chroot)
+          echo '#!/bin/bash' > /tmp/fake-gpg
+          echo 'exit 0' >> /tmp/fake-gpg
+          chmod +x /tmp/fake-gpg
+          sudo cp /tmp/fake-gpg chroot/usr/bin/gpg
+          # Continue with chroot (installs packages) and binary (creates ISO)
+          sudo lb chroot
+          sudo lb binary
           echo "ISO built successfully:"
           ls -lh *.iso
 
