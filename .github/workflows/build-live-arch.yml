@@ -101,6 +101,6 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: live-arch-rolling-${{ env.KERNEL_VERSION }}-amd64
-          path: output/*.iso
+          path: ${{ github.workspace }}/output/*.iso
           if-no-files-found: error
           compression-level: 0
