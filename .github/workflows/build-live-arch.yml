@@ -52,7 +52,11 @@ jobs:
       - name: Debug archiso version
         run: |
           pacman -Qi archiso | grep Version
-          grep -A5 'bootmodes' /usr/bin/mkarchiso | head -20
+          grep -n 'bootmode' /usr/bin/mkarchiso | head -20
+          echo "---VALIDATION CODE---"
+          grep -A10 'Validate boot modes' /usr/bin/mkarchiso || grep -A10 'bootmodes.*valid' /usr/bin/mkarchiso || echo "No validation code found"
+          echo "---DEFAULT PROFILE---"
+          cat /usr/share/archiso/examples/releng/profiledef.sh 2>/dev/null | head -20 || echo "No default profile"
 
       - name: Copy archiso profile
         run: |
