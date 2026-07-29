@@ -6,4 +6,4 @@ git
 curl
 wget
 bash-completion
-linux-firmware
+# linux-firmware removed - causes garbage package names in lb_chroot_install-packages

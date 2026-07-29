@@ -213,6 +213,20 @@ jobs:
             sudo cp /usr/share/live/build/chroot_linux-image /usr/share/live/build/chroot_linux-image.bak
             echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot-linuximage (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
           fi
+          # Diagnostic: check for garbage in config/packages.chroot/
+          echo "=== config/packages.chroot/ contents ==="
+          ls -la config/packages.chroot/ 2>/dev/null || echo "No packages.chroot dir"
+          if [ -d config/packages.chroot/ ]; then
+            echo "=== Files in packages.chroot ==="
+            find config/packages.chroot/ -type f 2>/dev/null | head -20
+            echo "=== File contents ==="
+            for f in config/packages.chroot/*; do
+              echo "--- $f ---"
+              cat "$f" 2>/dev/null | head -20
+            done
+            echo "=== Cleaning packages.chroot to prevent garbage package names ==="
+            sudo rm -rf config/packages.chroot/*
+          fi
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
