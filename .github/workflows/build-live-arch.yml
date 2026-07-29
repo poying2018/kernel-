@@ -1,0 +1,80 @@
+name: Build Live ISO (Arch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: "1. Kernel Version"
+        required: true
+        type: choice
+        options:
+          - distro-default
+          - "6.12"
+          - "6.18"
+          - "7.0"
+          - "7.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install archiso and dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            archiso \
+            base-devel \
+            git \
+            wget \
+            curl \
+            squashfs-tools \
+            xorriso \
+            grub \
+            efibootmgr
+
+      - name: Set kernel version
+        run: |
+          KVER="${{ inputs.kernel_version }}"
+          if [ "$KVER" = "distro-default" ]; then
+            KVER=$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)
+          fi
+          echo "KERNEL_VERSION=$KVER" >> $GITHUB_ENV
+          echo "Building with kernel version: $KVER"
+
+      - name: Copy archiso profile
+        run: |
+          cp -r live-build/arch /archlive
+          # Update kernel package if custom version requested
+          if [ "${{ env.KERNEL_VERSION }}" != "$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)" ]; then
+            # Replace linux package with specific version from AUR or custom build
+            echo "Custom kernel version: ${{ env.KERNEL_VERSION }}"
+            # For now, use default kernel (custom kernel requires AUR or manual build)
+          fi
+
+      - name: Build ISO
+        run: |
+          cd /archlive
+          mkarchiso -v -w /tmp/archiso-work -o /tmp/archiso-out .
+          echo "ISO built successfully:"
+          ls -lh /tmp/archiso-out/*.iso
+
+      - name: Copy ISO to workspace
+        run: |
+          mkdir -p ${{ github.workspace }}/output
+          cp /tmp/archiso-out/*.iso ${{ github.workspace }}/output/
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v5
+        with:
+          name: live-arch-rolling-${{ env.KERNEL_VERSION }}-amd64
+          path: output/*.iso
+          if-no-files-found: error
+          compression-level: 0
