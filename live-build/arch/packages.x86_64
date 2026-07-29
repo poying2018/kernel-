@@ -29,8 +29,8 @@ syslinux
 grub
 efibootmgr
 
-# Installer
-calamares
+# Installer (calamares is in AUR, not official repos)
+# Will be installed separately if needed
 
 # Tools
 sudo
