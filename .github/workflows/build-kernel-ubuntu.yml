@@ -73,7 +73,6 @@ jobs:
           case "${{ inputs.arch }}" in
             amd64)   echo "KERNEL_ARCH=x86_64" >> $GITHUB_ENV ;;
             arm64)   echo "KERNEL_ARCH=arm64" >> $GITHUB_ENV ;;
-            armhf)   echo "KERNEL_ARCH=arm" >> $GITHUB_ENV ;;
             riscv64) echo "KERNEL_ARCH=riscv" >> $GITHUB_ENV ;;
           esac
 
@@ -84,10 +83,6 @@ jobs:
             arm64)
               sudo apt-get install -y -qq gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
               echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
-              ;;
-            armhf)
-              sudo apt-get install -y -qq gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
-              echo "CROSS_COMPILE=arm-linux-gnueabihf-" >> $GITHUB_ENV
               ;;
             riscv64)
               sudo apt-get install -y -qq gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu
@@ -355,7 +350,7 @@ jobs:
             echo "Cross-compiling for $KERNEL_ARCH..."
             make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1
             make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 modules
-            if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
+            if [ "$KERNEL_ARCH" = "arm64" ]; then
               make -j$(nproc) ARCH=$KERNEL_ARCH CROSS_COMPILE=$CROSS_COMPILE CC="$CC" KCFLAGS=-Wno-error=format WERROR=0 LOCALVERSION=-${{ inputs.flavour }} KDEB_PKGVERSION=${SOURCE_KERNEL_VERSION}-1 dtbs
             fi
             echo "Cross-compilation build complete."
@@ -383,7 +378,7 @@ jobs:
           fi
 
           # Collect DTBs (ARM builds)
-          if [ "$KERNEL_ARCH" = "arm64" ] || [ "$KERNEL_ARCH" = "arm" ]; then
+          if [ "$KERNEL_ARCH" = "arm64" ]; then
             mkdir -p $ARTIFACT_DIR/dtbs
             find arch/$KERNEL_ARCH/boot/dts -name "*.dtb" -exec cp {} $ARTIFACT_DIR/dtbs/ \;
           fi
