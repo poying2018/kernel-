@@ -42,7 +42,7 @@ jobs:
             live-build \
             build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
             ccache git wget xz-utils kmod cpio rsync debhelper fakeroot devscripts \
-            gpg gnupg syslinux-utils
+            gpg gnupg syslinux-utils dpkg-dev
 
       - name: Set kernel version
         run: |
@@ -244,6 +244,15 @@ jobs:
             echo "=== WARNING: chroot_cache not found, listing files ==="
             sudo find /usr/share/live/build /usr/lib/live/build -type f 2>/dev/null | sort
           fi
+          # Disable lb_binary_linux-image (binary phase) since we handle kernel manually
+          BINARY_LINUX_IMG=$(sudo find /usr/share/live/build /usr/lib/live/build -name 'binary_linux-image' -type f 2>/dev/null | head -1)
+          if [ -n "$BINARY_LINUX_IMG" ]; then
+            echo "=== Disabling lb_binary_linux-image at $BINARY_LINUX_IMG (kernel handled manually) ==="
+            sudo cp "$BINARY_LINUX_IMG" "${BINARY_LINUX_IMG}.bak"
+            echo '# Disabled by Mavis - lb_binary_linux-image handled manually' | sudo tee "$BINARY_LINUX_IMG"
+          else
+            echo "=== WARNING: binary_linux-image not found ==="
+          fi
           # Backup: create dummy .deb to satisfy glob in case cache restore runs
           ls -la ${{ github.workspace }}/*.deb 2>/dev/null || echo "=== No .deb files in workspace ==="
           touch ${{ github.workspace }}/dummy-mavis.deb
@@ -360,6 +369,31 @@ jobs:
           sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
           sudo chroot chroot apt-mark hold linux-generic 2>/dev/null || true
           echo "=== Dummy packages installed and held ==="
+          # Diagnostic: check if kernel .deb files exist and kernel is installed
+          echo "=== Kernel .deb files in workspace ==="
+          ls -la ${{ github.workspace }}/*.deb 2>/dev/null || echo "No .deb files found"
+          echo "=== Kernel .deb files in chroot/tmp ==="
+          ls -la chroot/tmp/*.deb 2>/dev/null || echo "No .deb files in chroot/tmp"
+          echo "=== Kernel files in chroot/boot ==="
+          ls -la chroot/boot/vmlinuz-* 2>/dev/null || echo "No vmlinuz in chroot/boot"
+          ls -la chroot/boot/initrd.img-* 2>/dev/null || echo "No initrd.img in chroot/boot"
+          echo "=== dpkg -l | grep linux-image ==="
+          sudo chroot chroot dpkg -l | grep linux-image 2>/dev/null || echo "No linux-image packages installed"
+          # Create local apt repo with dummy ubuntu-keyring for lb binary phase
+          # (lb_chroot_archives chroot install runs apt-get update which clears apt cache,
+          # making the dummy package invisible to dependency resolver. Local repo fixes this.)
+          echo "=== Creating local apt repo for dummy ubuntu-keyring ==="
+          mkdir -p /tmp/local-repo/pool/main/u/ubuntu-keyring
+          cp /tmp/dummy-keyring.deb /tmp/local-repo/pool/main/u/ubuntu-keyring/
+          cd /tmp/local-repo
+          dpkg-scanpackages pool/main > Packages 2>/dev/null
+          gzip -k Packages 2>/dev/null || true
+          # Copy local repo into chroot so it's accessible via file://
+          sudo mkdir -p chroot/tmp/local-repo
+sudo cp -r /tmp/local-repo/* chroot/tmp/local-repo/
+          echo "deb [trusted=yes] file:///tmp/local-repo ./" | sudo tee chroot/etc/apt/sources.list.d/local-repo.list
+          echo "=== Local apt repo created ==="
+          cd ${{ github.workspace }}/live-build
           # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)
           if ! command -v isohybrid &>/dev/null; then
             echo "=== Creating fake isohybrid wrapper ==="
@@ -372,6 +406,11 @@ jobs:
           fi
           # Create ISO
           sudo lb binary
+          # Manually copy kernel to binary/boot (since lb_binary_linux-image is disabled)
+          echo "=== Copying kernel to binary/boot (post-binary) ==="
+          sudo cp chroot/boot/vmlinuz-* binary/boot/ 2>/dev/null || echo "WARNING: No vmlinuz found"
+          sudo cp chroot/boot/initrd.img-* binary/boot/ 2>/dev/null || echo "WARNING: No initrd.img found"
+          ls -lh binary/boot/ 2>/dev/null || echo "No binary/boot dir"
           echo "ISO built successfully:"
           ls -lh *.iso
 
