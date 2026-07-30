@@ -363,12 +363,15 @@ jobs:
           echo "=== Dummy linux-generic installed and held (pre-chroot) ==="
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
-          # Install kernel packages using dpkg --root (from OUTSIDE chroot).
-          # After lb chroot, chroot /tmp/ is unmounted/cleaned, so we cannot
-          # use `chroot chroot dpkg -i /tmp/*.deb`. Instead, use --root= to
-          # install directly from the host filesystem.
-          echo "=== Installing kernel packages (post-chroot, via dpkg --root) ==="
-          sudo dpkg --root=$PWD/chroot -i ${{ github.workspace }}/linux-*.deb 2>&1 | tail -10 || true
+          # Install kernel packages using chroot dpkg -i from a stable path.
+          # dpkg --root= fails on Ubuntu (unrecoverable fatal error), and
+          # chroot /tmp/ gets cleaned after lb chroot. So we copy .deb files
+          # to /opt/kernel-debs/ (stable) and install from inside chroot.
+          echo "=== Installing kernel packages (post-chroot, via chroot dpkg -i) ==="
+          sudo mkdir -p chroot/opt/kernel-debs
+          sudo cp ${{ github.workspace }}/linux-*.deb chroot/opt/kernel-debs/
+          sudo ls -la chroot/opt/kernel-debs/
+          sudo chroot chroot dpkg -i /opt/kernel-debs/*.deb 2>&1 | tail -10 || true
           sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>&1 | tail -5 || true
           # Verify kernel files exist
           echo "=== Verifying kernel files after install ==="
@@ -384,13 +387,15 @@ jobs:
           sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-binary) ==="
           sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
-          # Install dummy packages AFTER lb chroot using dpkg --root (from outside chroot).
-          # After lb chroot, chroot /tmp/ is cleaned, so we use --root= to install directly.
-          echo "=== Installing dummy packages (pre-binary, via dpkg --root) ==="
+          # Install dummy packages AFTER lb chroot using chroot dpkg -i from stable path.
+          # dpkg --root= fails on Ubuntu, and chroot /tmp/ gets cleaned.
+          echo "=== Installing dummy packages (pre-binary, via chroot dpkg -i) ==="
           mkdir -p /tmp/dummy-keyring/DEBIAN
           printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
           dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
-          sudo dpkg --root=$PWD/chroot -i /tmp/dummy-keyring.deb 2>/dev/null || true
+          sudo mkdir -p chroot/opt/dummy-debs
+          sudo cp /tmp/dummy-keyring.deb chroot/opt/dummy-debs/
+          sudo chroot chroot dpkg -i /opt/dummy-debs/dummy-keyring.deb 2>/dev/null || true
           sudo chroot chroot apt-mark hold ubuntu-keyring 2>/dev/null || true
           echo "=== Dummy packages installed and held ==="
           # Diagnostic: check if kernel .deb files exist and kernel is installed
@@ -403,6 +408,24 @@ jobs:
           ls -la chroot/boot/initrd.img-* 2>/dev/null || echo "No initrd.img in chroot/boot"
           echo "=== dpkg -l | grep linux-image ==="
           sudo chroot chroot dpkg -l | grep linux-image 2>/dev/null || echo "No linux-image packages installed"
+          # Disable lb_chroot_archives_chroot_install to prevent apt sources overwrite
+          CHROOT_ARCHIVES=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name '*chroot_archives*' -type f 2>/dev/null | head -1)
+          if [ -n "$CHROOT_ARCHIVES" ]; then
+            echo "=== Disabling lb_chroot_archives at $CHROOT_ARCHIVES (apt configured manually) ==="
+            sudo cp "$CHROOT_ARCHIVES" "${CHROOT_ARCHIVES}.bak"
+            echo '# Disabled by Mavis - lb_chroot_archives handled manually' | sudo tee "$CHROOT_ARCHIVES"
+          fi
+          # Manually configure apt sources for binary phase
+          echo "=== Manually configuring apt sources for binary phase ==="
+          sudo mkdir -p chroot/etc/apt/sources.list.d
+          sudo tee chroot/etc/apt/sources.list << EOF
+deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }} main restricted universe multiverse
+deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-updates main restricted universe multiverse
+deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-backports main restricted universe multiverse
+deb [trusted=yes] http://security.ubuntu.com/ubuntu ${{ inputs.release_line }}-security main restricted universe multiverse
+EOF
+          sudo chroot chroot apt-get update 2>&1 | tail -5
+          echo "=== Apt sources configured ==="
           # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)
           if ! command -v isohybrid &>/dev/null; then
             echo "=== Creating fake isohybrid wrapper ==="
@@ -415,11 +438,12 @@ jobs:
           fi
           # Create ISO
           sudo lb binary
-          # Manually copy kernel to binary/boot (since lb_binary_linux-image is disabled)
-          echo "=== Copying kernel to binary/boot (post-binary) ==="
-          sudo cp chroot/boot/vmlinuz-* binary/boot/ 2>/dev/null || echo "WARNING: No vmlinuz found"
-          sudo cp chroot/boot/initrd.img-* binary/boot/ 2>/dev/null || echo "WARNING: No initrd.img found"
-          ls -lh binary/boot/ 2>/dev/null || echo "No binary/boot dir"
+          # Manually copy kernel to binary/casper (Ubuntu uses casper, not boot)
+          echo "=== Copying kernel to binary/casper (post-binary) ==="
+          sudo mkdir -p binary/casper
+          sudo cp chroot/boot/vmlinuz-* binary/casper/ 2>/dev/null || echo "WARNING: No vmlinuz found"
+          sudo cp chroot/boot/initrd.img-* binary/casper/ 2>/dev/null || echo "WARNING: No initrd.img found"
+          ls -lh binary/casper/ 2>/dev/null || echo "No binary/casper dir"
           echo "ISO built successfully:"
           ls -lh *.iso
 

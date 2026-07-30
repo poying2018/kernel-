@@ -403,11 +403,30 @@ jobs:
           # Copy local repo into chroot at a STABLE path (NOT /tmp/ which gets cleaned)
           sudo mkdir -p ${{ github.workspace }}/live-build/chroot/opt/local-repo
           sudo cp -r /tmp/local-repo/* ${{ github.workspace }}/live-build/chroot/opt/local-repo/
-          # Ensure sources.list.d directory exists (may have been cleaned by lb chroot)
-          sudo mkdir -p chroot/etc/apt/sources.list.d
-          echo "deb [trusted=yes] file:///opt/local-repo ./" | sudo tee chroot/etc/apt/sources.list.d/local-repo.list
-          echo "=== Local apt repo created ==="
+          # Disable lb_chroot_archives_chroot_install since it overwrites
+          # /etc/apt/sources.list and ignores our local-repo.list, causing
+          # ubuntu-keyring dependency to fail. We configure apt manually.
+          CHROOT_ARCHIVES=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name '*chroot_archives*' -type f 2>/dev/null | head -1)
+          if [ -n "$CHROOT_ARCHIVES" ]; then
+            echo "=== Disabling lb_chroot_archives at $CHROOT_ARCHIVES (apt configured manually) ==="
+            sudo cp "$CHROOT_ARCHIVES" "${CHROOT_ARCHIVES}.bak"
+            echo '# Disabled by Mavis - lb_chroot_archives handled manually' | sudo tee "$CHROOT_ARCHIVES"
+          fi
+          # Manually configure apt sources for binary phase (including local repo)
+          echo "=== Manually configuring apt sources for binary phase ==="
+          sudo mkdir -p ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list.d
+          # Write sources.list with remote repos + local repo
+          sudo tee ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list << EOF
+deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }} main contrib non-free non-free-firmware
+deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }}-updates main contrib non-free non-free-firmware
+deb [trusted=yes] http://security.debian.org/debian-security ${{ inputs.release_line }}-security main contrib non-free-firmware
+deb [trusted=yes] file:///opt/local-repo ./
+EOF
+          # Also add local-repo.list for redundancy
+          echo "deb [trusted=yes] file:///opt/local-repo ./" | sudo tee ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list.d/local-repo.list
           cd ${{ github.workspace }}/live-build
+          sudo chroot chroot apt-get update 2>&1 | tail -5
+          echo "=== Apt sources configured ==="
           # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)
           if ! command -v isohybrid &>/dev/null; then
             echo "=== Creating fake isohybrid wrapper ==="
