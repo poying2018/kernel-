@@ -419,11 +419,11 @@ jobs:
           echo "=== Manually configuring apt sources for binary phase ==="
           sudo mkdir -p chroot/etc/apt/sources.list.d
           sudo tee chroot/etc/apt/sources.list << EOF
-deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }} main restricted universe multiverse
-deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-updates main restricted universe multiverse
-deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-backports main restricted universe multiverse
-deb [trusted=yes] http://security.ubuntu.com/ubuntu ${{ inputs.release_line }}-security main restricted universe multiverse
-EOF
+          deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }} main restricted universe multiverse
+          deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-updates main restricted universe multiverse
+          deb [trusted=yes] http://archive.ubuntu.com/ubuntu ${{ inputs.release_line }}-backports main restricted universe multiverse
+          deb [trusted=yes] http://security.ubuntu.com/ubuntu ${{ inputs.release_line }}-security main restricted universe multiverse
+          EOF
           sudo chroot chroot apt-get update 2>&1 | tail -5
           echo "=== Apt sources configured ==="
           # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)

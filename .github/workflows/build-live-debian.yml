@@ -417,11 +417,11 @@ jobs:
           sudo mkdir -p ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list.d
           # Write sources.list with remote repos + local repo
           sudo tee ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list << EOF
-deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }} main contrib non-free non-free-firmware
-deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }}-updates main contrib non-free non-free-firmware
-deb [trusted=yes] http://security.debian.org/debian-security ${{ inputs.release_line }}-security main contrib non-free-firmware
-deb [trusted=yes] file:///opt/local-repo ./
-EOF
+          deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }} main contrib non-free non-free-firmware
+          deb [trusted=yes] http://deb.debian.org/debian ${{ inputs.release_line }}-updates main contrib non-free non-free-firmware
+          deb [trusted=yes] http://security.debian.org/debian-security ${{ inputs.release_line }}-security main contrib non-free-firmware
+          deb [trusted=yes] file:///opt/local-repo ./
+          EOF
           # Also add local-repo.list for redundancy
           echo "deb [trusted=yes] file:///opt/local-repo ./" | sudo tee ${{ github.workspace }}/live-build/chroot/etc/apt/sources.list.d/local-repo.list
           cd ${{ github.workspace }}/live-build
