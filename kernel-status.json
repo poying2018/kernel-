@@ -116,21 +116,21 @@
       "moniker": "longterm"
     },
     "6.12": {
-      "version": "6.12.98",
+      "version": "6.12.99",
       "iseol": false,
-      "date": "2026-07-25",
+      "date": "2026-07-29",
       "moniker": "longterm"
     },
     "6.6": {
-      "version": "6.6.145",
+      "version": "6.6.146",
       "iseol": false,
-      "date": "2026-07-24",
+      "date": "2026-07-29",
       "moniker": "longterm"
     },
     "6.1": {
-      "version": "6.1.178",
+      "version": "6.1.179",
       "iseol": false,
-      "date": "2026-07-24",
+      "date": "2026-07-29",
       "moniker": "longterm"
     },
     "5.15": {
@@ -146,5 +146,5 @@
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-07-29T06:28:19.019363+00:00"
+  "last_sync": "2026-07-30T08:13:41.119289+00:00"
 }
