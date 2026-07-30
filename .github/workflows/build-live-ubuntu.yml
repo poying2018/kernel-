@@ -226,7 +226,7 @@ jobs:
           if [ -n "$CHROOT_HACKS" ]; then
             echo "=== Disabling lb_chroot_hacks at $CHROOT_HACKS (handled manually) ==="
             sudo cp "$CHROOT_HACKS" "${CHROOT_HACKS}.bak"
-            echo 'lb_chroot_hacks() { echo "[Mavis] Skipping lb_chroot_hacks (handled manually)"; }' | sudo tee "$CHROOT_HACKS"
+            echo '# Disabled by Mavis - lb_chroot_hacks handled manually' | sudo tee "$CHROOT_HACKS"
           else
             echo "=== WARNING: chroot_hacks not found, searching... ==="
             sudo find /usr -name 'chroot_hacks' -type f 2>/dev/null
@@ -247,6 +247,15 @@ jobs:
             echo '# Disabled by Mavis - lb_chroot_live-packages handled manually' | sudo tee "$CHROOT_LIVE_PKGS"
           else
             echo "=== ERROR: chroot_live-packages not found anywhere! ==="
+          fi
+          # Disable lb_chroot_cache (tries to cp *.deb from workspace, fails)
+          CHROOT_CACHE=$(sudo find /usr/share/live/build /usr/lib/live/build -name 'chroot_cache' -type f 2>/dev/null | head -1)
+          if [ -n "$CHROOT_CACHE" ]; then
+            echo "=== Disabling lb_chroot_cache at $CHROOT_CACHE ==="
+            sudo cp "$CHROOT_CACHE" "${CHROOT_CACHE}.bak"
+            echo '# Disabled by Mavis - lb_chroot_cache not needed' | sudo tee "$CHROOT_CACHE"
+          else
+            echo "=== WARNING: chroot_cache not found ==="
           fi
           # Diagnostic: check for garbage in config/packages.chroot/
           echo "=== config/packages.chroot/ contents ==="
