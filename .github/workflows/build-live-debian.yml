@@ -427,16 +427,14 @@ jobs:
           cd ${{ github.workspace }}/live-build
           sudo chroot chroot apt-get update 2>&1 | tail -5
           echo "=== Apt sources configured ==="
-          # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)
-          if ! command -v isohybrid &>/dev/null; then
-            echo "=== Creating fake isohybrid wrapper ==="
-            echo '#!/bin/bash' > /tmp/fake-isohybrid
-            echo '# Fake isohybrid - just exit 0 (ISO still created, just not USB-hybrid)' >> /tmp/fake-isohybrid
-            echo 'exit 0' >> /tmp/fake-isohybrid
-            chmod +x /tmp/fake-isohybrid
-            sudo mv /tmp/fake-isohybrid /usr/local/bin/isohybrid
-            echo "=== Fake isohybrid installed ==="
-          fi
+          # Fix isohybrid - always create fake (syslinux-utils doesn't provide it on GitHub runners)
+          echo "=== Creating fake isohybrid wrapper ==="
+          echo '#!/bin/bash' > /tmp/fake-isohybrid
+          echo '# Fake isohybrid - just exit 0 (ISO still created, just not USB-hybrid)' >> /tmp/fake-isohybrid
+          echo 'exit 0' >> /tmp/fake-isohybrid
+          chmod +x /tmp/fake-isohybrid
+          sudo mv /tmp/fake-isohybrid /usr/bin/isohybrid
+          echo "=== Fake isohybrid installed to /usr/bin ==="
           # Copy kernel to binary directories BEFORE lb binary.
           # lb_binary_disk runs during lb binary and calls unmkinitramfs,
           # which looks for initrd in binary/casper/ (even on Debian, since
