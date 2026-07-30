@@ -212,11 +212,18 @@ jobs:
           dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
           sudo cp /tmp/dummy-keyring.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
-          # Disable lb_chroot-linuximage since we install kernel manually
+          # Disable lb_chroot_linux-image since we install kernel manually
           if [ -f /usr/share/live/build/chroot_linux-image ]; then
-            echo "=== Disabling lb_chroot-linuximage (kernel installed manually) ==="
+            echo "=== Disabling lb_chroot_linux-image (kernel installed manually) ==="
             sudo cp /usr/share/live/build/chroot_linux-image /usr/share/live/build/chroot_linux-image.bak
-            echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot-linuximage (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
+            echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot_linux-image (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
+          fi
+          # Disable lb_chroot_hacks since it creates dangling symlinks and fails on chmod
+          # (we handle boot files manually after kernel install)
+          if [ -f /usr/share/live/build/chroot_hacks ]; then
+            echo "=== Disabling lb_chroot_hacks (handled manually) ==="
+            sudo cp /usr/share/live/build/chroot_hacks /usr/share/live/build/chroot_hacks.bak
+            echo 'lb_chroot_hacks() { echo "[Mavis] Skipping lb_chroot_hacks (handled manually)"; }' | sudo tee /usr/share/live/build/chroot_hacks
           fi
           # Diagnostic: check for garbage in config/packages.chroot/
           echo "=== config/packages.chroot/ contents ==="

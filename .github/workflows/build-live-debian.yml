@@ -198,13 +198,18 @@ jobs:
           # Ensure all repos in sources.list are trusted (remote only, no local repo)
           sudo sed -i 's|^deb |deb [trusted=yes] |g' chroot/etc/apt/sources.list
           sudo sed -i 's|^deb-src |deb-src [trusted=yes] |g' chroot/etc/apt/sources.list
-          # Patch live-build chroot_linux-image to use correct Contents file URL
-          # (newer Debian uses dists/bookworm/main/Contents-amd64.gz, not dists/bookworm/Contents-amd64.gz)
-          # Strategy: just make lb_chroot_linux-image a no-op since we install kernel manually anyway
+          # Disable lb_chroot_linux-image since we install kernel manually
           if [ -f /usr/share/live/build/chroot_linux-image ]; then
             echo "=== Disabling lb_chroot_linux-image (kernel installed manually) ==="
             sudo cp /usr/share/live/build/chroot_linux-image /usr/share/live/build/chroot_linux-image.bak
             echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot_linux-image (kernel installed manually)"; }' | sudo tee /usr/share/live/build/chroot_linux-image
+          fi
+          # Disable lb_chroot_hacks since it creates dangling symlinks and fails on chmod
+          # (we handle boot files manually after kernel install)
+          if [ -f /usr/share/live/build/chroot_hacks ]; then
+            echo "=== Disabling lb_chroot_hacks (handled manually) ==="
+            sudo cp /usr/share/live/build/chroot_hacks /usr/share/live/build/chroot_hacks.bak
+            echo 'lb_chroot_hacks() { echo "[Mavis] Skipping lb_chroot_hacks (handled manually)"; }' | sudo tee /usr/share/live/build/chroot_hacks
           fi
           # Create dummy ubuntu-keyring package to satisfy dependencies
           # (live-build removes preferences.d files, so Pin-Priority won't work)
