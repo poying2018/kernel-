@@ -363,12 +363,12 @@ jobs:
           echo "=== Dummy linux-generic installed and held (pre-chroot) ==="
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
-          # Install kernel packages manually (avoid local repo permission issues)
-          # NOTE: Only copy linux-* packages, NOT dummy-mavis.deb (dpkg would fail on it)
-          echo "=== Installing kernel packages in chroot ==="
-          sudo cp ${{ github.workspace }}/linux-*.deb chroot/tmp/ 2>/dev/null || echo "WARNING: No linux-*.deb files"
-          sudo ls -la chroot/tmp/linux-*.deb 2>/dev/null || echo "WARNING: No kernel debs in chroot/tmp"
-          sudo chroot chroot dpkg -i /tmp/linux-*.deb 2>&1 | tail -5 || true
+          # Install kernel packages using dpkg --root (from OUTSIDE chroot).
+          # After lb chroot, chroot /tmp/ is unmounted/cleaned, so we cannot
+          # use `chroot chroot dpkg -i /tmp/*.deb`. Instead, use --root= to
+          # install directly from the host filesystem.
+          echo "=== Installing kernel packages (post-chroot, via dpkg --root) ==="
+          sudo dpkg --root=$PWD/chroot -i ${{ github.workspace }}/linux-*.deb 2>&1 | tail -10 || true
           sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>&1 | tail -5 || true
           # Verify kernel files exist
           echo "=== Verifying kernel files after install ==="
@@ -384,14 +384,13 @@ jobs:
           sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-binary) ==="
           sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
-          # Install dummy packages AFTER lb chroot (chroot phase may remove them)
-          # and hold them so lb binary's apt doesn't try to replace them
-          echo "=== Installing dummy packages (pre-binary) ==="
+          # Install dummy packages AFTER lb chroot using dpkg --root (from outside chroot).
+          # After lb chroot, chroot /tmp/ is cleaned, so we use --root= to install directly.
+          echo "=== Installing dummy packages (pre-binary, via dpkg --root) ==="
           mkdir -p /tmp/dummy-keyring/DEBIAN
           printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
           dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
-          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
-          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
+          sudo dpkg --root=$PWD/chroot -i /tmp/dummy-keyring.deb 2>/dev/null || true
           sudo chroot chroot apt-mark hold ubuntu-keyring 2>/dev/null || true
           echo "=== Dummy packages installed and held ==="
           # Diagnostic: check if kernel .deb files exist and kernel is installed
