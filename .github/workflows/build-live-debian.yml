@@ -248,20 +248,6 @@ jobs:
           ls -la ${{ github.workspace }}/*.deb 2>/dev/null || echo "=== No .deb files in workspace ==="
           touch ${{ github.workspace }}/dummy-mavis.deb
           echo "=== Created dummy .deb ==="
-          # Create dummy ubuntu-keyring package to satisfy dependencies
-          # (live-build removes preferences.d files, so Pin-Priority won't work)
-          mkdir -p /tmp/dummy-keyring/DEBIAN
-          printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
-          dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
-          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
-          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
-          # Create dummy linux-generic package (Ubuntu-specific meta-package that
-          # live-build's lb_chroot_linux-image tries to install even on Debian)
-          mkdir -p /tmp/dummy-linux-generic/DEBIAN
-          printf 'Package: linux-generic\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy linux-generic\nSection: misc\nPriority: optional\n' > /tmp/dummy-linux-generic/DEBIAN/control
-          dpkg-deb --build /tmp/dummy-linux-generic /tmp/dummy-linux-generic.deb 2>/dev/null
-          sudo cp /tmp/dummy-linux-generic.deb chroot/tmp/
-          sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
           # Fix wget to correct Contents-amd64.gz URL (dists/bookworm → dists/bookworm/main)
           # (lb_chroot_linux-image uses wrong URL path for newer Debian)
           if [ -f /usr/bin/wget ]; then
@@ -309,6 +295,22 @@ jobs:
           sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-binary) ==="
           sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
+          # Install dummy packages AFTER lb chroot (chroot phase may remove them)
+          # and hold them so lb binary's apt doesn't try to replace them
+          echo "=== Installing dummy packages (pre-binary) ==="
+          mkdir -p /tmp/dummy-keyring/DEBIAN
+          printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
+          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
+          sudo chroot chroot apt-mark hold ubuntu-keyring 2>/dev/null || true
+          mkdir -p /tmp/dummy-linux-generic/DEBIAN
+          printf 'Package: linux-generic\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy linux-generic\nSection: misc\nPriority: optional\n' > /tmp/dummy-linux-generic/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-linux-generic /tmp/dummy-linux-generic.deb 2>/dev/null
+          sudo cp /tmp/dummy-linux-generic.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
+          sudo chroot chroot apt-mark hold linux-generic 2>/dev/null || true
+          echo "=== Dummy packages installed and held ==="
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
