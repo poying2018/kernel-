@@ -432,7 +432,7 @@ jobs:
           if [ -n "$BINARY_SH" ]; then
             echo "Found binary.sh at $BINARY_SH"
             sudo cp "$BINARY_SH" "${BINARY_SH}.bak"
-            sudo sed -i 's/^isohybrid/: # isohybrid disabled by Mavis/' "$BINARY_SH"
+            sudo sed -i 's|^[[:space:]]*isohybrid.*|: # isohybrid disabled by Mavis|g' "$BINARY_SH"
             echo "=== isohybrid disabled in $BINARY_SH ==="
             grep -n "isohybrid" "$BINARY_SH" || echo "No isohybrid references found"
           else
