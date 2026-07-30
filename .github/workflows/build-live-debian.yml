@@ -427,18 +427,32 @@ jobs:
           cd ${{ github.workspace }}/live-build
           sudo chroot chroot apt-get update 2>&1 | tail -5
           echo "=== Apt sources configured ==="
-          # Disable isohybrid in live-build's binary.sh script (syslinux-utils doesn't provide it on GitHub runners)
-          echo "=== Disabling isohybrid in live-build binary.sh ==="
-          BINARY_SH=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name 'binary.sh' -type f 2>/dev/null | head -1)
-          if [ -n "$BINARY_SH" ]; then
-            echo "Found binary.sh at $BINARY_SH"
-            sudo cp "$BINARY_SH" "${BINARY_SH}.bak"
-            sudo sed -i 's|^[[:space:]]*isohybrid.*|: # isohybrid disabled by Mavis|g' "$BINARY_SH"
-            echo "=== isohybrid disabled in $BINARY_SH ==="
-            grep -n "isohybrid" "$BINARY_SH" || echo "No isohybrid references found"
+          # Comprehensive isohybrid fix (syslinux-utils doesn't provide it on GitHub runners)
+          echo "=== Comprehensive isohybrid fix ==="
+          # Step 1: Create fake isohybrid in ALL PATH locations (fallback safety net)
+          for dir in /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin; do
+            sudo mkdir -p "$dir"
+            if [ ! -f "$dir/isohybrid" ]; then
+              printf '#!/bin/sh\nexit 0\n' | sudo tee "$dir/isohybrid" > /dev/null
+              sudo chmod +x "$dir/isohybrid"
+            fi
+          done
+          echo "=== Fake isohybrid created ==="
+          which isohybrid
+          # Step 2: Find and patch ALL files containing isohybrid in live-build directories
+          echo "=== Searching for isohybrid references in live-build ==="
+          ISOHYBRID_FILES=$(sudo grep -Rl "isohybrid" /usr/share/live/ /usr/lib/live/ /usr/libexec/live/ /usr/bin/lb 2>/dev/null || true)
+          if [ -n "$ISOHYBRID_FILES" ]; then
+            for f in $ISOHYBRID_FILES; do
+              echo "Patching: $f"
+              sudo cp "$f" "${f}.bak"
+              sudo sed -i 's|^[[:space:]]*isohybrid.*|: # isohybrid disabled by Mavis|g' "$f"
+              grep -n "isohybrid" "$f" || echo "All isohybrid references removed from $f"
+            done
           else
-            echo "WARNING: binary.sh not found!"
+            echo "No isohybrid references found in live-build directories"
           fi
+          echo "=== isohybrid fix complete ==="
           # Copy kernel to binary directories BEFORE lb binary.
           # lb_binary_disk runs during lb binary and calls unmkinitramfs,
           # which looks for initrd in binary/casper/ (even on Debian, since
