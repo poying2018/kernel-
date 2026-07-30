@@ -251,10 +251,11 @@ jobs:
           ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
           # Remove live-packages.list.chroot (lb bootstrap recreates it with casper)
           # MUST be before lb chroot, not lb binary (lb chroot reads this file)
+          # Use sudo because lb bootstrap creates files as root
           echo "=== Removing live-packages.list.chroot (pre-chroot) ==="
-          rm -f config/package-lists/live-packages.list.chroot
+          sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-chroot) ==="
-          find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
+          sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
@@ -268,9 +269,9 @@ jobs:
           ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
           # Remove live-packages.list.chroot again (lb bootstrap may have recreated it)
           echo "=== Removing live-packages.list.chroot (pre-binary) ==="
-          rm -f config/package-lists/live-packages.list.chroot
+          sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-binary) ==="
-          find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
+          sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
