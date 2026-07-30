@@ -390,7 +390,7 @@ jobs:
           gzip -k Packages 2>/dev/null || true
           # Copy local repo into chroot so it's accessible via file://
           sudo mkdir -p chroot/tmp/local-repo
-sudo cp -r /tmp/local-repo/* chroot/tmp/local-repo/
+          sudo cp -r /tmp/local-repo/* chroot/tmp/local-repo/
           echo "deb [trusted=yes] file:///tmp/local-repo ./" | sudo tee chroot/etc/apt/sources.list.d/local-repo.list
           echo "=== Local apt repo created ==="
           cd ${{ github.workspace }}/live-build
