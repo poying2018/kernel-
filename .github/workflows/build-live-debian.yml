@@ -42,7 +42,7 @@ jobs:
             live-build \
             build-essential bc bison flex libssl-dev libelf-dev libdw-dev dwarves \
             ccache git wget xz-utils kmod cpio rsync debhelper fakeroot devscripts \
-            gpg gnupg
+            gpg gnupg syslinux-utils
 
       - name: Set kernel version
         run: |
@@ -279,6 +279,19 @@ jobs:
           sudo rm -f config/package-lists/live-packages.list.chroot
           echo "=== Package list files (pre-chroot) ==="
           sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
+          # Install dummy ubuntu-keyring BEFORE lb chroot so apt's dependency
+          # resolver sees it as satisfied (some packages like calamares may
+          # depend on it). On Debian, ubuntu-keyring doesn't exist as a real
+          # package, so we provide a dummy. apt-mark hold prevents apt from
+          # trying to remove/replace it during lb chroot's apt-get install.
+          echo "=== Installing dummy ubuntu-keyring (pre-chroot) ==="
+          mkdir -p /tmp/dummy-keyring/DEBIAN
+          printf 'Package: ubuntu-keyring\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy\nSection: misc\nPriority: optional\n' > /tmp/dummy-keyring/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
+          sudo cp /tmp/dummy-keyring.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
+          sudo chroot chroot apt-mark hold ubuntu-keyring 2>/dev/null || true
+          echo "=== Dummy ubuntu-keyring installed and held (pre-chroot) ==="
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
