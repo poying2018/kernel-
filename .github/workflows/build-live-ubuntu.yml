@@ -426,14 +426,18 @@ jobs:
           EOF
           sudo chroot chroot apt-get update 2>&1 | tail -5
           echo "=== Apt sources configured ==="
-          # Fix isohybrid - always create fake (syslinux-utils doesn't provide it on GitHub runners)
-          echo "=== Creating fake isohybrid wrapper ==="
-          echo '#!/bin/bash' > /tmp/fake-isohybrid
-          echo '# Fake isohybrid - just exit 0 (ISO still created, just not USB-hybrid)' >> /tmp/fake-isohybrid
-          echo 'exit 0' >> /tmp/fake-isohybrid
-          chmod +x /tmp/fake-isohybrid
-          sudo mv /tmp/fake-isohybrid /usr/bin/isohybrid
-          echo "=== Fake isohybrid installed to /usr/bin ==="
+          # Disable isohybrid in live-build's binary.sh script (syslinux-utils doesn't provide it on GitHub runners)
+          echo "=== Disabling isohybrid in live-build binary.sh ==="
+          BINARY_SH=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name 'binary.sh' -type f 2>/dev/null | head -1)
+          if [ -n "$BINARY_SH" ]; then
+            echo "Found binary.sh at $BINARY_SH"
+            sudo cp "$BINARY_SH" "${BINARY_SH}.bak"
+            sudo sed -i 's/^isohybrid/: # isohybrid disabled by Mavis/' "$BINARY_SH"
+            echo "=== isohybrid disabled in $BINARY_SH ==="
+            grep -n "isohybrid" "$BINARY_SH" || echo "No isohybrid references found"
+          else
+            echo "WARNING: binary.sh not found!"
+          fi
           # Copy kernel to binary/casper BEFORE lb binary.
           # lb_binary_disk runs during lb binary and calls unmkinitramfs,
           # which looks for initrd in binary/casper/. If the files aren't there
