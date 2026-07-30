@@ -244,6 +244,10 @@ jobs:
             chmod +x /tmp/wget-wrapper
             sudo mv /tmp/wget-wrapper /usr/bin/wget
           fi
+          # Remove dangling symlinks in chroot/boot to prevent lb_chroot_hacks chmod failures
+          echo "=== Removing dangling symlinks in chroot/boot ==="
+          find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+          ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
