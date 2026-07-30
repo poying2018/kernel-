@@ -219,11 +219,20 @@ jobs:
           fi
           # Disable lb_chroot_live-packages since lb bootstrap creates a default
           # live-packages.list.chroot with 'casper' (Ubuntu-only pkg, not on Debian)
-          CHROOT_LIVE_PKGS=$(sudo find /usr/share/live/build /usr/lib/live/build -name 'chroot_live-packages' -type f 2>/dev/null | head -1)
+          # First, find the file (try multiple patterns and locations)
+          CHROOT_LIVE_PKGS=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name '*live-packages*' 2>/dev/null | head -1)
+          if [ -z "$CHROOT_LIVE_PKGS" ]; then
+            echo "=== WARNING: chroot_live-packages not found, listing all live-build files ==="
+            sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -type f 2>/dev/null | sort
+            # Try to find it anywhere
+            CHROOT_LIVE_PKGS=$(sudo find /usr -name '*live-packages*' -type f 2>/dev/null | head -1)
+          fi
           if [ -n "$CHROOT_LIVE_PKGS" ]; then
             echo "=== Disabling lb_chroot_live-packages at $CHROOT_LIVE_PKGS ==="
             sudo cp "$CHROOT_LIVE_PKGS" "${CHROOT_LIVE_PKGS}.bak"
             echo 'lb_chroot_live-packages() { echo "[Mavis] Skipping lb_chroot_live-packages"; }' | sudo tee "$CHROOT_LIVE_PKGS"
+          else
+            echo "=== ERROR: chroot_live-packages not found anywhere! ==="
           fi
           # Create dummy ubuntu-keyring package to satisfy dependencies
           # (live-build removes preferences.d files, so Pin-Priority won't work)
