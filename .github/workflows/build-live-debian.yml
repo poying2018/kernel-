@@ -389,8 +389,11 @@ jobs:
           dpkg-scanpackages pool/main > Packages 2>/dev/null
           gzip -k Packages 2>/dev/null || true
           # Copy local repo into chroot so it's accessible via file://
-          sudo mkdir -p chroot/tmp/local-repo
-          sudo cp -r /tmp/local-repo/* chroot/tmp/local-repo/
+          # IMPORTANT: Use absolute paths to avoid recursive copy issue
+          # (relative 'chroot' path would create /tmp/local-repo/chroot/ which
+          # causes 'cp into itself' error)
+          sudo mkdir -p ${{ github.workspace }}/live-build/chroot/tmp/local-repo
+          sudo cp -r /tmp/local-repo/* ${{ github.workspace }}/live-build/chroot/tmp/local-repo/
           echo "deb [trusted=yes] file:///tmp/local-repo ./" | sudo tee chroot/etc/apt/sources.list.d/local-repo.list
           echo "=== Local apt repo created ==="
           cd ${{ github.workspace }}/live-build
