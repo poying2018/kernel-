@@ -212,6 +212,13 @@ jobs:
           dpkg-deb --build /tmp/dummy-keyring /tmp/dummy-keyring.deb 2>/dev/null
           sudo cp /tmp/dummy-keyring.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
+          # Create dummy linux-generic package (Ubuntu-specific meta-package that
+          # live-build's lb_chroot_linux-image tries to install even on Debian)
+          mkdir -p /tmp/dummy-linux-generic/DEBIAN
+          printf 'Package: linux-generic\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy linux-generic\nSection: misc\nPriority: optional\n' > /tmp/dummy-linux-generic/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-linux-generic /tmp/dummy-linux-generic.deb 2>/dev/null
+          sudo cp /tmp/dummy-linux-generic.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
           # Fix wget to correct Contents-amd64.gz URL (dists/bookworm → dists/bookworm/main)
           # (lb_chroot_linux-image uses wrong URL path for newer Debian)
           if [ -f /usr/bin/wget ]; then
