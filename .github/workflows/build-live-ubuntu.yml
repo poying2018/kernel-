@@ -259,8 +259,8 @@ jobs:
             sudo find /usr/share/live/build /usr/lib/live/build -type f 2>/dev/null | sort
           fi
           # Backup: create dummy .deb to satisfy glob in case cache restore runs
-          ls -la /__w/kernel-/kernel-/*.deb 2>/dev/null || echo "=== No .deb files in workspace ==="
-          touch /__w/kernel-/kernel-/dummy-mavis.deb
+          ls -la ${{ github.workspace }}/*.deb 2>/dev/null || echo "=== No .deb files in workspace ==="
+          touch ${{ github.workspace }}/dummy-mavis.deb
           echo "=== Created dummy .deb ==="
           # Diagnostic: check for garbage in config/packages.chroot/
           echo "=== config/packages.chroot/ contents ==="
@@ -309,7 +309,7 @@ jobs:
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
-          sudo cp /__w/kernel-/kernel-/*.deb chroot/tmp/
+          sudo cp ${{ github.workspace }}/*.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/*.deb || true
           sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>/dev/null || true
           # Remove dangling symlinks in chroot/boot before lb binary
