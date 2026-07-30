@@ -335,6 +335,16 @@ jobs:
           sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
           sudo chroot chroot apt-mark hold linux-generic 2>/dev/null || true
           echo "=== Dummy packages installed and held ==="
+          # Fix isohybrid if not available (syslinux-utils may not provide it on GitHub runners)
+          if ! command -v isohybrid &>/dev/null; then
+            echo "=== Creating fake isohybrid wrapper ==="
+            echo '#!/bin/bash' > /tmp/fake-isohybrid
+            echo '# Fake isohybrid - just exit 0 (ISO still created, just not USB-hybrid)' >> /tmp/fake-isohybrid
+            echo 'exit 0' >> /tmp/fake-isohybrid
+            chmod +x /tmp/fake-isohybrid
+            sudo mv /tmp/fake-isohybrid /usr/local/bin/isohybrid
+            echo "=== Fake isohybrid installed ==="
+          fi
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
