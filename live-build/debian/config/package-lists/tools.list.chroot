@@ -14,3 +14,4 @@ firmware-libertas
 firmware-zd1211
 firmware-ti-connectivity
 firmware-brcm80211
+initramfs-tools

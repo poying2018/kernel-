@@ -7,3 +7,4 @@ curl
 wget
 bash-completion
 # linux-firmware removed - causes garbage package names in lb_chroot_install-packages
+initramfs-tools
