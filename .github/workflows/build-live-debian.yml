@@ -272,13 +272,24 @@ jobs:
           echo "=== Removing dangling symlinks in chroot/boot ==="
           find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
           ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
-          # Remove live-packages.list.chroot (lb bootstrap recreates it with casper)
-          # MUST be before lb chroot, not lb binary (lb chroot reads this file)
-          # Use sudo because lb bootstrap creates files as root
-          echo "=== Removing live-packages.list.chroot (pre-chroot) ==="
-          sudo rm -f config/package-lists/live-packages.list.chroot
+          # Remove ALL package list files (lb bootstrap may recreate defaults
+          # with Ubuntu-specific packages like linux-generic that don't exist
+          # on Debian). Then re-copy our custom lists.
+          echo "=== Removing ALL package list files (pre-chroot) ==="
+          sudo rm -f config/packages.list.chroot
+          sudo rm -f config/package-lists/*.list.chroot
+          sudo rm -f config/package-lists/*.list.binary
+          # Re-copy our custom package lists
+          echo "=== Re-copying custom package lists ==="
+          cp -r ../live-build/debian/config/package-lists/* config/package-lists/ 2>/dev/null || true
+          cp ../live-build/debian/config/packages.list.chroot config/ 2>/dev/null || true
           echo "=== Package list files (pre-chroot) ==="
           sudo find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
+          echo "=== Package list contents ==="
+          for f in config/package-lists/*.list.chroot; do
+            echo "--- $f ---"
+            cat "$f" 2>/dev/null || echo "(empty)"
+          done
           # Install dummy ubuntu-keyring BEFORE lb chroot so apt's dependency
           # resolver sees it as satisfied (some packages like calamares may
           # depend on it). On Debian, ubuntu-keyring doesn't exist as a real
