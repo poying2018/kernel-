@@ -273,6 +273,11 @@ jobs:
           echo "=== Removing dangling symlinks in chroot/boot (pre-binary) ==="
           find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
           ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
+          # Remove live-packages.list.chroot again (lb bootstrap may have recreated it)
+          echo "=== Removing live-packages.list.chroot (pre-binary) ==="
+          rm -f config/package-lists/live-packages.list.chroot
+          echo "=== Package list files (pre-binary) ==="
+          find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
