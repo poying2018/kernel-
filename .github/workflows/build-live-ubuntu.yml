@@ -436,14 +436,17 @@ jobs:
             sudo mv /tmp/fake-isohybrid /usr/local/bin/isohybrid
             echo "=== Fake isohybrid installed ==="
           fi
+          # Copy kernel to binary/casper BEFORE lb binary.
+          # lb_binary_disk runs during lb binary and calls unmkinitramfs,
+          # which looks for initrd in binary/casper/. If the files aren't there
+          # yet, unmkinitramfs fails with "cannot open ../../binary/casper/initrd.img*".
+          echo "=== Copying kernel to binary/casper (pre-binary) ==="
+          sudo mkdir -p binary/casper
+          sudo cp chroot/boot/vmlinuz-* binary/casper/ 2>/dev/null || echo "WARNING: No vmlinuz"
+          sudo cp chroot/boot/initrd.img-* binary/casper/ 2>/dev/null || echo "WARNING: No initrd"
+          ls -lh binary/casper/ 2>/dev/null || echo "No binary/casper dir"
           # Create ISO
           sudo lb binary
-          # Manually copy kernel to binary/casper (Ubuntu uses casper, not boot)
-          echo "=== Copying kernel to binary/casper (post-binary) ==="
-          sudo mkdir -p binary/casper
-          sudo cp chroot/boot/vmlinuz-* binary/casper/ 2>/dev/null || echo "WARNING: No vmlinuz found"
-          sudo cp chroot/boot/initrd.img-* binary/casper/ 2>/dev/null || echo "WARNING: No initrd.img found"
-          ls -lh binary/casper/ 2>/dev/null || echo "No binary/casper dir"
           echo "ISO built successfully:"
           ls -lh *.iso
 

@@ -437,13 +437,21 @@ jobs:
             sudo mv /tmp/fake-isohybrid /usr/local/bin/isohybrid
             echo "=== Fake isohybrid installed ==="
           fi
+          # Copy kernel to binary directories BEFORE lb binary.
+          # lb_binary_disk runs during lb binary and calls unmkinitramfs,
+          # which looks for initrd in binary/casper/ (even on Debian, since
+          # we're on an Ubuntu runner). If the files aren't there yet,
+          # unmkinitramfs fails with "cannot open ../../binary/casper/initrd.img*".
+          # We also copy to binary/boot/ for the final ISO structure.
+          echo "=== Copying kernel to binary/casper and binary/boot (pre-binary) ==="
+          sudo mkdir -p binary/casper binary/boot
+          sudo cp chroot/boot/vmlinuz-* binary/casper/ 2>/dev/null || echo "WARNING: No vmlinuz"
+          sudo cp chroot/boot/initrd.img-* binary/casper/ 2>/dev/null || echo "WARNING: No initrd"
+          sudo cp chroot/boot/vmlinuz-* binary/boot/ 2>/dev/null || true
+          sudo cp chroot/boot/initrd.img-* binary/boot/ 2>/dev/null || true
+          ls -lh binary/casper/ binary/boot/ 2>/dev/null
           # Create ISO
           sudo lb binary
-          # Manually copy kernel to binary/boot (since lb_binary_linux-image is disabled)
-          echo "=== Copying kernel to binary/boot (post-binary) ==="
-          sudo cp chroot/boot/vmlinuz-* binary/boot/ 2>/dev/null || echo "WARNING: No vmlinuz found"
-          sudo cp chroot/boot/initrd.img-* binary/boot/ 2>/dev/null || echo "WARNING: No initrd.img found"
-          ls -lh binary/boot/ 2>/dev/null || echo "No binary/boot dir"
           echo "ISO built successfully:"
           ls -lh *.iso
 
