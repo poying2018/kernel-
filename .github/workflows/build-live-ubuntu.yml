@@ -217,7 +217,7 @@ jobs:
           if [ -n "$CHROOT_LINUX_IMG" ]; then
             echo "=== Disabling lb_chroot_linux-image at $CHROOT_LINUX_IMG (kernel installed manually) ==="
             sudo cp "$CHROOT_LINUX_IMG" "${CHROOT_LINUX_IMG}.bak"
-            echo 'lb_chroot_linux-image() { echo "[Mavis] Skipping lb_chroot_linux-image (kernel installed manually)"; }' | sudo tee "$CHROOT_LINUX_IMG"
+            echo '# Disabled by Mavis - lb_chroot_linux-image handled manually' | sudo tee "$CHROOT_LINUX_IMG"
           fi
           # Disable lb_chroot_hacks since it creates dangling symlinks and fails on chmod
           # (we handle boot files manually after kernel install)
@@ -244,7 +244,7 @@ jobs:
           if [ -n "$CHROOT_LIVE_PKGS" ]; then
             echo "=== Disabling lb_chroot_live-packages at $CHROOT_LIVE_PKGS ==="
             sudo cp "$CHROOT_LIVE_PKGS" "${CHROOT_LIVE_PKGS}.bak"
-            echo 'lb_chroot_live-packages() { echo "[Mavis] Skipping lb_chroot_live-packages"; }' | sudo tee "$CHROOT_LIVE_PKGS"
+            echo '# Disabled by Mavis - lb_chroot_live-packages handled manually' | sudo tee "$CHROOT_LIVE_PKGS"
           else
             echo "=== ERROR: chroot_live-packages not found anywhere! ==="
           fi
