@@ -261,6 +261,11 @@ jobs:
           sudo cp /__w/kernel-/kernel-/*.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/*.deb || true
           sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>/dev/null || true
+          # Remove dangling symlinks in chroot/boot before lb binary
+          # (lb_chroot_hacks creates initrd.img symlinks that point to non-existent files)
+          echo "=== Removing dangling symlinks in chroot/boot (pre-binary) ==="
+          find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+          ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"

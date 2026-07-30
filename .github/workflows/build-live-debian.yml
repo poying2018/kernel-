@@ -158,9 +158,10 @@ jobs:
           # Copy live-build config FIRST (overwrites lb config defaults)
           cp -r ../live-build/debian/config/* config/
           # Remove any default package list files created by lb config
-          # (they may contain distro-specific packages like linux-generic)
+          # (they may contain distro-specific packages like linux-generic, casper)
           rm -f config/packages.list.chroot
           rm -f config/package-lists/live.list.chroot
+          rm -f config/package-lists/live-packages.list.chroot
           # Diagnostic: show all package list files
           echo "=== Package list files ==="
           find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
@@ -249,6 +250,11 @@ jobs:
           sudo cp /__w/kernel-/kernel-/*.deb chroot/tmp/
           sudo chroot chroot dpkg -i /tmp/*.deb || true
           sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>/dev/null || true
+          # Remove dangling symlinks in chroot/boot before lb binary
+          # (lb_chroot_hacks creates initrd.img symlinks that point to non-existent files)
+          echo "=== Removing dangling symlinks in chroot/boot (pre-binary) ==="
+          find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+          ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
           # Create ISO
           sudo lb binary
           echo "ISO built successfully:"
