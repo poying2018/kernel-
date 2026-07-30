@@ -1,0 +1,6 @@
+#!/bin/bash
+# Remove dangling symlinks in chroot/boot created by kernel package installation
+# (kernel packages create initrd.img symlinks pointing to non-existent files)
+echo "HOOK: Removing dangling symlinks in chroot/boot"
+find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
+ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"

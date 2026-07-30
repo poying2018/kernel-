@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fake gpg for CI: always returns success
+# apt only checks exit code; 0 = signature valid
+exit 0

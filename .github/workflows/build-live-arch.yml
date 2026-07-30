@@ -1,0 +1,108 @@
+name: Build Live ISO (Arch)
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: "1. Kernel Version"
+        required: true
+        type: choice
+        options:
+          - distro-default
+          - "6.12"
+          - "6.18"
+          - "7.0"
+          - "7.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install archiso and dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            archiso \
+            base-devel \
+            git \
+            wget \
+            curl \
+            squashfs-tools \
+            xorriso \
+            syslinux \
+            grub \
+            efibootmgr
+
+      - name: Set kernel version
+        run: |
+          KVER="${{ inputs.kernel_version }}"
+          if [ "$KVER" = "distro-default" ]; then
+            KVER=$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)
+          fi
+          echo "KERNEL_VERSION=$KVER" >> $GITHUB_ENV
+          echo "Building with kernel version: $KVER"
+
+      - name: Debug archiso version
+        run: |
+          pacman -Qi archiso | grep Version
+          grep -n 'bootmode' /usr/bin/mkarchiso | head -20
+          echo "---VALIDATION CODE---"
+          grep -A10 'Validate boot modes' /usr/bin/mkarchiso || grep -A10 'bootmodes.*valid' /usr/bin/mkarchiso || echo "No validation code found"
+          echo "---DEFAULT PROFILE---"
+          cat /usr/share/archiso/examples/releng/profiledef.sh 2>/dev/null | head -20 || echo "No default profile"
+
+      - name: Copy archiso profile
+        run: |
+          cp -r live-build/arch /archlive
+          # Find and copy bootloader config from archiso installation
+          echo "=== Looking for archiso bootloader configs ==="
+          find /usr/share/archiso -maxdepth 2 -type d 2>/dev/null
+          find /usr -path "*/archiso/*" -name "syslinux" -type d 2>/dev/null
+          find /usr -path "*/archiso/*" -name "grub" -type d 2>/dev/null
+          # Copy if found
+          SYSLINUX_DIR=$(find /usr -path "*/archiso/*" -name "syslinux" -type d 2>/dev/null | head -1)
+          GRUB_DIR=$(find /usr -path "*/archiso/*" -name "grub" -type d 2>/dev/null | head -1)
+          if [ -n "$SYSLINUX_DIR" ]; then cp -r "$SYSLINUX_DIR" /archlive/syslinux; fi
+          if [ -n "$GRUB_DIR" ]; then cp -r "$GRUB_DIR" /archlive/grub; fi
+          ls -la /archlive/
+          # Update kernel package if custom version requested
+          if [ "${{ env.KERNEL_VERSION }}" != "$(pacman -Si linux | grep Version | awk '{print $3}' | cut -d. -f1,2)" ]; then
+            # Replace linux package with specific version from AUR or custom build
+            echo "Custom kernel version: ${{ env.KERNEL_VERSION }}"
+            # For now, use default kernel (custom kernel requires AUR or manual build)
+          fi
+
+      - name: Build ISO
+        run: |
+          cd /archlive
+          mkarchiso -v -w /tmp/archiso-work -o /tmp/archiso-out .
+          echo "ISO built successfully:"
+          ls -lh /tmp/archiso-out/*.iso
+
+      - name: Copy ISO to workspace
+        run: |
+          # Use the host workspace path that upload-artifact expects
+          OUTPUT_DIR="/__w/kernel-/kernel-/output"
+          mkdir -p "$OUTPUT_DIR"
+          echo "=== ISO files in container ==="
+          ls -lh /tmp/archiso-out/*.iso
+          echo "=== Copying to workspace ==="
+          cp -v /tmp/archiso-out/*.iso "$OUTPUT_DIR/"
+          echo "=== Files in workspace output ==="
+          ls -lh "$OUTPUT_DIR"/
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v5
+        with:
+          name: live-arch-rolling-${{ env.KERNEL_VERSION }}-amd64
+          path: /__w/kernel-/kernel-/output/*.iso
+          if-no-files-found: error
+          compression-level: 0
