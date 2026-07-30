@@ -165,6 +165,13 @@ jobs:
             --iso-volume "Ubuntu Live ${{ inputs.release_line }}"
           # Copy live-build config FIRST (overwrites lb config defaults)
           cp -r ../live-build/ubuntu/config/* config/
+          # Remove any default package list files created by lb config
+          # (they may contain distro-specific packages)
+          rm -f config/packages.list.chroot
+          rm -f config/package-lists/live.list.chroot
+          # Diagnostic: show all package list files
+          echo "=== Package list files ==="
+          find config/ -name '*.list.chroot' -o -name '*.list.binary' | sort
           # Then add [trusted=yes] to all chroot archive sources
           # (gpg is not available in the GitHub Actions runner chroot)
           for f in config/archives/*.list.chroot*; do
