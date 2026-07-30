@@ -272,6 +272,16 @@ jobs:
           echo "=== Removing dangling symlinks in chroot/boot ==="
           find chroot/boot/ -type l ! -exec test -e {} \; -delete 2>/dev/null || true
           ls -la chroot/boot/ 2>/dev/null || echo "No boot dir"
+          # Diagnostic: show ALL config files after lb bootstrap
+          echo "=== ALL config files after lb bootstrap ==="
+          sudo find config/ -type f | sort
+          echo "=== Package list contents (after bootstrap) ==="
+          for f in config/package-lists/*.list.chroot config/packages.list.chroot; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f" 2>/dev/null || echo "(empty)"
+            fi
+          done
           # Remove ALL package list files (lb bootstrap may recreate defaults
           # with Ubuntu-specific packages like linux-generic that don't exist
           # on Debian). Then re-copy our custom lists.
@@ -279,6 +289,9 @@ jobs:
           sudo rm -f config/packages.list.chroot
           sudo rm -f config/package-lists/*.list.chroot
           sudo rm -f config/package-lists/*.list.binary
+          # Also remove any other package list variants
+          sudo rm -f config/package-lists/*.list.chroot.live
+          sudo rm -f config/package-lists/*.list.binary.live
           # Re-copy our custom package lists
           echo "=== Re-copying custom package lists ==="
           cp -r ../live-build/debian/config/package-lists/* config/package-lists/ 2>/dev/null || true
@@ -303,6 +316,18 @@ jobs:
           sudo chroot chroot dpkg -i /tmp/dummy-keyring.deb 2>/dev/null || true
           sudo chroot chroot apt-mark hold ubuntu-keyring 2>/dev/null || true
           echo "=== Dummy ubuntu-keyring installed and held (pre-chroot) ==="
+          # Install dummy linux-generic BEFORE lb chroot so apt sees it as
+          # satisfied. On Debian, linux-generic doesn't exist as a real package
+          # but live-build may reference it. apt-mark hold prevents apt from
+          # trying to remove/replace it during lb chroot's apt-get install.
+          echo "=== Installing dummy linux-generic (pre-chroot) ==="
+          mkdir -p /tmp/dummy-linux-generic/DEBIAN
+          printf 'Package: linux-generic\nVersion: 9999.99.99\nArchitecture: all\nMaintainer: dummy\nDescription: dummy linux-generic\nSection: misc\nPriority: optional\n' > /tmp/dummy-linux-generic/DEBIAN/control
+          dpkg-deb --build /tmp/dummy-linux-generic /tmp/dummy-linux-generic.deb 2>/dev/null
+          sudo cp /tmp/dummy-linux-generic.deb chroot/tmp/
+          sudo chroot chroot dpkg -i /tmp/dummy-linux-generic.deb 2>/dev/null || true
+          sudo chroot chroot apt-mark hold linux-generic 2>/dev/null || true
+          echo "=== Dummy linux-generic installed and held (pre-chroot) ==="
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
