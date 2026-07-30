@@ -252,13 +252,20 @@ jobs:
             sudo find /usr/share/live/build /usr/lib/live/build -type f 2>/dev/null | sort
           fi
           # Disable lb_binary_linux-image (binary phase) since we handle kernel manually
-          BINARY_LINUX_IMG=$(sudo find /usr/share/live/build /usr/lib/live/build -name 'binary_linux-image' -type f 2>/dev/null | head -1)
+          # On Ubuntu the file is named lb_binary_linux-image, on Debian binary_linux-image
+          BINARY_LINUX_IMG=$(sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -name '*binary_linux-image*' -type f 2>/dev/null | head -1)
+          if [ -z "$BINARY_LINUX_IMG" ]; then
+            echo "=== WARNING: binary_linux-image not found, listing all files ==="
+            sudo find /usr/share/live/build /usr/lib/live/build /usr/libexec/live/build -type f 2>/dev/null | sort
+            # Try broader search
+            BINARY_LINUX_IMG=$(sudo find /usr -name '*binary*linux*image*' -type f 2>/dev/null | head -1)
+          fi
           if [ -n "$BINARY_LINUX_IMG" ]; then
             echo "=== Disabling lb_binary_linux-image at $BINARY_LINUX_IMG (kernel handled manually) ==="
             sudo cp "$BINARY_LINUX_IMG" "${BINARY_LINUX_IMG}.bak"
             echo '# Disabled by Mavis - lb_binary_linux-image handled manually' | sudo tee "$BINARY_LINUX_IMG"
           else
-            echo "=== WARNING: binary_linux-image not found ==="
+            echo "=== ERROR: binary_linux-image not found anywhere! Kernel copy will fail. ==="
           fi
           # Backup: create dummy .deb to satisfy glob in case cache restore runs
           ls -la ${{ github.workspace }}/*.deb 2>/dev/null || echo "=== No .deb files in workspace ==="
@@ -357,9 +364,16 @@ jobs:
           # Run chroot stage (installs packages from config/package-lists/)
           sudo lb chroot
           # Install kernel packages manually (avoid local repo permission issues)
-          sudo cp ${{ github.workspace }}/*.deb chroot/tmp/
-          sudo chroot chroot dpkg -i /tmp/*.deb || true
-          sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>/dev/null || true
+          # NOTE: Only copy linux-* packages, NOT dummy-mavis.deb (dpkg would fail on it)
+          echo "=== Installing kernel packages in chroot ==="
+          sudo cp ${{ github.workspace }}/linux-*.deb chroot/tmp/ 2>/dev/null || echo "WARNING: No linux-*.deb files"
+          sudo ls -la chroot/tmp/linux-*.deb 2>/dev/null || echo "WARNING: No kernel debs in chroot/tmp"
+          sudo chroot chroot dpkg -i /tmp/linux-*.deb 2>&1 | tail -5 || true
+          sudo chroot chroot apt-get install -f -y --allow-unauthenticated 2>&1 | tail -5 || true
+          # Verify kernel files exist
+          echo "=== Verifying kernel files after install ==="
+          sudo ls -la chroot/boot/vmlinuz-* 2>/dev/null || echo "ERROR: No vmlinuz in chroot/boot!"
+          sudo ls -la chroot/boot/initrd.img-* 2>/dev/null || echo "ERROR: No initrd.img in chroot/boot!"
           # Remove dangling symlinks in chroot/boot before lb binary
           # (lb_chroot_hacks creates initrd.img symlinks that point to non-existent files)
           echo "=== Removing dangling symlinks in chroot/boot (pre-binary) ==="
