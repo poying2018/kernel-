@@ -225,6 +225,13 @@ jobs:
             sudo cp /usr/share/live/build/chroot_hacks /usr/share/live/build/chroot_hacks.bak
             echo 'lb_chroot_hacks() { echo "[Mavis] Skipping lb_chroot_hacks (handled manually)"; }' | sudo tee /usr/share/live/build/chroot_hacks
           fi
+          # Disable lb_chroot_live-packages since lb bootstrap creates a default
+          # live-packages.list.chroot with 'casper' (Ubuntu-only pkg, not on Debian)
+          if [ -f /usr/share/live/build/chroot_live-packages ]; then
+            echo "=== Disabling lb_chroot_live-packages (casper not available on Debian) ==="
+            sudo cp /usr/share/live/build/chroot_live-packages /usr/share/live/build/chroot_live-packages.bak
+            echo 'lb_chroot_live-packages() { echo "[Mavis] Skipping lb_chroot_live-packages"; }' | sudo tee /usr/share/live/build/chroot_live-packages
+          fi
           # Diagnostic: check for garbage in config/packages.chroot/
           echo "=== config/packages.chroot/ contents ==="
           ls -la config/packages.chroot/ 2>/dev/null || echo "No packages.chroot dir"
