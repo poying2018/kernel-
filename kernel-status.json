@@ -110,41 +110,41 @@
       "moniker": "stable"
     },
     "6.18": {
-      "version": "6.18.40",
+      "version": "6.18.41",
       "iseol": false,
-      "date": "2026-07-24",
+      "date": "2026-07-30",
       "moniker": "longterm"
     },
     "6.12": {
-      "version": "6.12.99",
+      "version": "6.12.100",
       "iseol": false,
-      "date": "2026-07-29",
+      "date": "2026-07-30",
       "moniker": "longterm"
     },
     "6.6": {
-      "version": "6.6.146",
+      "version": "6.6.147",
       "iseol": false,
-      "date": "2026-07-29",
+      "date": "2026-07-30",
       "moniker": "longterm"
     },
     "6.1": {
-      "version": "6.1.179",
+      "version": "6.1.180",
       "iseol": false,
-      "date": "2026-07-29",
+      "date": "2026-07-30",
       "moniker": "longterm"
     },
     "5.15": {
-      "version": "5.15.212",
+      "version": "5.15.213",
       "iseol": false,
-      "date": "2026-07-24",
+      "date": "2026-07-30",
       "moniker": "longterm"
     },
     "5.10": {
-      "version": "5.10.261",
+      "version": "5.10.262",
       "iseol": false,
-      "date": "2026-07-24",
+      "date": "2026-07-30",
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-07-30T08:13:41.119289+00:00"
+  "last_sync": "2026-07-31T08:37:42.245844+00:00"
 }
