@@ -50,6 +50,41 @@
       "sha": "b3f94b2b3f3e51ab880a51fc6510e1dafba654ed",
       "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
     },
+    "ubuntu/jammy/Ubuntu-5.15.0-168.178": {
+      "ref": "Ubuntu-5.15.0-168.178",
+      "sha": "57bc51af478eed431fe2428447c4554e1e118482",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1": {
+      "ref": "Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1",
+      "sha": "d27f468b26cdf7e32bf1f847f296de1847a80a5c",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1": {
+      "ref": "Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1",
+      "sha": "6c2999c545b8d86b8d654c6c3b28a3e1070a5ac7",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/jammy/Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1": {
+      "ref": "Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1",
+      "sha": "281e8908bd2dd492654c9c49bb6c5e00805a71cf",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
+    },
+    "ubuntu/noble/Ubuntu-6.8.0-57.59": {
+      "ref": "Ubuntu-6.8.0-57.59",
+      "sha": "dce1781c843d8c2bcada4867896a8a9188ac3415",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble"
+    },
+    "ubuntu/oracular/Ubuntu-6.8.0-24.24": {
+      "ref": "Ubuntu-6.8.0-24.24",
+      "sha": "f4d5b6e79297787f23025e72bbbd572f8e270f84",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/oracular"
+    },
+    "ubuntu/plucky/Ubuntu-6.8.0-26.26": {
+      "ref": "Ubuntu-6.8.0-26.26",
+      "sha": "c08611ac463c21ab4b4faabf2edb05b605a99159",
+      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/plucky"
+    },
     "arch/rolling/v6.3.2": {
       "ref": "v6.3.2",
       "sha": "2388a66189994448256c46c49cb84f84d0581db5",
@@ -111,5 +146,5 @@
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-08-05T08:36:00.071215+00:00"
+  "last_sync": "2026-08-06T08:18:55.812407+00:00"
 }
