@@ -103,48 +103,54 @@
     }
   },
   "eol_report": {
-    "7.1": {
-      "version": "7.1.10",
+    "7.2": {
+      "version": "7.2.1",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
+      "moniker": "stable"
+    },
+    "7.1": {
+      "version": "7.1.11",
+      "iseol": false,
+      "date": "2026-08-27",
       "moniker": "stable"
     },
     "6.18": {
-      "version": "6.18.46",
+      "version": "6.18.47",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     },
     "6.12": {
-      "version": "6.12.105",
+      "version": "6.12.106",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     },
     "6.6": {
-      "version": "6.6.153",
+      "version": "6.6.154",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     },
     "6.1": {
-      "version": "6.1.184",
+      "version": "6.1.185",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     },
     "5.15": {
-      "version": "5.15.217",
+      "version": "5.15.218",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     },
     "5.10": {
-      "version": "5.10.266",
+      "version": "5.10.267",
       "iseol": false,
-      "date": "2026-08-23",
+      "date": "2026-08-27",
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-08-26T06:33:50.379271+00:00"
+  "last_sync": "2026-08-27T17:09:40.433569+00:00"
 }
