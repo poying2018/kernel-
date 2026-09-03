@@ -50,41 +50,6 @@
       "sha": "b3f94b2b3f3e51ab880a51fc6510e1dafba654ed",
       "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
     },
-    "ubuntu/jammy/Ubuntu-5.15.0-168.178": {
-      "ref": "Ubuntu-5.15.0-168.178",
-      "sha": "57bc51af478eed431fe2428447c4554e1e118482",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-    },
-    "ubuntu/jammy/Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1": {
-      "ref": "Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1",
-      "sha": "d27f468b26cdf7e32bf1f847f296de1847a80a5c",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-    },
-    "ubuntu/jammy/Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1": {
-      "ref": "Ubuntu-hwe-6.5-6.5.0-41.41_22.04.1",
-      "sha": "6c2999c545b8d86b8d654c6c3b28a3e1070a5ac7",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-    },
-    "ubuntu/jammy/Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1": {
-      "ref": "Ubuntu-lowlatency-hwe-6.8-6.8.0-134.134.1_22.04.1",
-      "sha": "281e8908bd2dd492654c9c49bb6c5e00805a71cf",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-    },
-    "ubuntu/noble/Ubuntu-6.8.0-57.59": {
-      "ref": "Ubuntu-6.8.0-57.59",
-      "sha": "dce1781c843d8c2bcada4867896a8a9188ac3415",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble"
-    },
-    "ubuntu/oracular/Ubuntu-6.8.0-24.24": {
-      "ref": "Ubuntu-6.8.0-24.24",
-      "sha": "f4d5b6e79297787f23025e72bbbd572f8e270f84",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/oracular"
-    },
-    "ubuntu/plucky/Ubuntu-6.8.0-26.26": {
-      "ref": "Ubuntu-6.8.0-26.26",
-      "sha": "c08611ac463c21ab4b4faabf2edb05b605a99159",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/plucky"
-    },
     "arch/rolling/v6.3.2": {
       "ref": "v6.3.2",
       "sha": "2388a66189994448256c46c49cb84f84d0581db5",
@@ -104,53 +69,53 @@
   },
   "eol_report": {
     "7.2": {
-      "version": "7.2.2",
+      "version": "7.2.3",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "stable"
     },
     "7.1": {
-      "version": "7.1.12",
-      "iseol": false,
-      "date": "2026-08-28",
+      "version": "7.1.13",
+      "iseol": true,
+      "date": "2026-09-02",
       "moniker": "stable"
     },
     "6.18": {
-      "version": "6.18.48",
+      "version": "6.18.49",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     },
     "6.12": {
-      "version": "6.12.107",
+      "version": "6.12.108",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     },
     "6.6": {
-      "version": "6.6.155",
+      "version": "6.6.156",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     },
     "6.1": {
-      "version": "6.1.186",
+      "version": "6.1.187",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     },
     "5.15": {
-      "version": "5.15.219",
+      "version": "5.15.220",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     },
     "5.10": {
-      "version": "5.10.268",
+      "version": "5.10.269",
       "iseol": false,
-      "date": "2026-08-28",
+      "date": "2026-09-02",
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-09-02T10:16:52.973210+00:00"
+  "last_sync": "2026-09-03T10:27:04.394971+00:00"
 }
