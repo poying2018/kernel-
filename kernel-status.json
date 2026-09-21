@@ -50,11 +50,6 @@
       "sha": "b3f94b2b3f3e51ab880a51fc6510e1dafba654ed",
       "repo": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
     },
-    "ubuntu/jammy/Ubuntu-5.15.0-168.178": {
-      "ref": "Ubuntu-5.15.0-168.178",
-      "sha": "57bc51af478eed431fe2428447c4554e1e118482",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
-    },
     "ubuntu/jammy/Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1": {
       "ref": "Ubuntu-hwe-6.2-6.2.0-40.41_22.04.1",
       "sha": "d27f468b26cdf7e32bf1f847f296de1847a80a5c",
@@ -152,5 +147,5 @@
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-09-20T10:21:22.600883+00:00"
+  "last_sync": "2026-09-21T11:34:41.031098+00:00"
 }
