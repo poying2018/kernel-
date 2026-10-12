@@ -104,15 +104,15 @@
   },
   "eol_report": {
     "7.2": {
-      "version": "7.2.9",
+      "version": "7.2.10",
       "iseol": false,
-      "date": "2026-10-03",
+      "date": "2026-10-11",
       "moniker": "stable"
     },
     "6.18": {
-      "version": "6.18.55",
+      "version": "6.18.56",
       "iseol": false,
-      "date": "2026-10-03",
+      "date": "2026-10-11",
       "moniker": "longterm"
     },
     "6.12": {
@@ -146,5 +146,5 @@
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-10-11T11:53:13.959656+00:00"
+  "last_sync": "2026-10-12T14:01:12.898565+00:00"
 }
