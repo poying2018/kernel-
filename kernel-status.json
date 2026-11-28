@@ -70,11 +70,6 @@
       "sha": "281e8908bd2dd492654c9c49bb6c5e00805a71cf",
       "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/jammy"
     },
-    "ubuntu/noble/Ubuntu-6.8.0-57.59": {
-      "ref": "Ubuntu-6.8.0-57.59",
-      "sha": "dce1781c843d8c2bcada4867896a8a9188ac3415",
-      "repo": "https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble"
-    },
     "ubuntu/oracular/Ubuntu-6.8.0-24.24": {
       "ref": "Ubuntu-6.8.0-24.24",
       "sha": "f4d5b6e79297787f23025e72bbbd572f8e270f84",
@@ -152,5 +147,5 @@
       "moniker": "longterm"
     }
   },
-  "last_sync": "2026-11-27T15:55:14.428887+00:00"
+  "last_sync": "2026-11-28T14:51:27.264903+00:00"
 }
